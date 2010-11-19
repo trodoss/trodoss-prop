@@ -1,0 +1,1766 @@
+!Map Format (v0.6):
+!
+!The map is generated in 16x1 character rows, and the 'screen' is being built at a 90 degree
+!angle (so it is being 'drawn' on the screen horizontally, but stored vertically)
+!
+!There are multiple 'directives':
+!  /s - indicates the beginning of 'screen' data (a static screen), allows specification of a music filename (RTTTL format)
+!  /l - indicates the beginning of 'level' data, allows specification of a music filename (RTTTL format)
+!  /b - indicates the beginning of 'boss' data, specified with a bitmap filename (for levels 2-8)
+!
+!  - A 'screen' is expected to be 24 lines long
+!  - Levels are assumed to be 8 'screens' (or 192 lines) long
+!  - 'Boss' data (beginning with the boss for the second level) is contained in a bitmap (.bmp)
+!        The bitmap is 32x16 - This is 2 'frames' of 16x16 each
+!
+!  The ASCII characters (0-128) that are used correspond to one being defined in the font
+!
+!  The character range $60..$7F (lower case letters and a few special characters) 
+!  correspond to the 'background' images.
+!
+!  The following is how the pre-defined character ranges map to the colors:
+!  $60..$63 : pattern_chr_color := white
+!  $64..$67 : pattern_chr_color := blue
+!  $68..$6B : pattern_chr_color := skyblue
+!  $6C..$6F : pattern_chr_color := purple
+!  $70..$73 : pattern_chr_color := lpurple
+!  $74..$77 : pattern_chr_color := green
+!  $78..$7B : pattern_chr_color := red
+!  $7C..$7F : pattern_chr_color := lred
+!
+!  The character range $30..$3F ( 0-9, and characters :;<=>? ) represent the enemies that can be
+!  placed on the map.
+!
+!  *Note: The game expects 8 enemies defined for each level (exactly 7 + 1 "Boss")
+!  
+!  The following is a definition of the characters:
+!  0 : Enemy 1 - animation stored in positions $10, $11 - color: green
+!  1 : Enemy 2 - animation stored in positions $12, $13 - color: skyblue
+!  2 : Enemy 3 - animation stored in positions $14, $15 - color: purple
+!  3 : Enemy 4 - animation stored in positions $16, $17 - color: white
+!  4 : Enemy 5 - animation stored in positions $18, $19 - color: purple
+!  5 : Enemy 6 - animation stored in positions $1A, $1B - color: red
+!  6 : Enemy 7 - animation stored in positions $1C, $1D - color: white
+!  7 : (Reserved) Enemy Weapon - animation stored in positions $1E, $1F - color: white
+!  8 : Boss 1 - animation in positions ($21-$28) - color: yellow
+!  9 : Boss 2 - color: white
+!  : : Boss 3 - color: blue
+!  ; : Boss 4 - color: green
+!  < : Boss 5 - color: white
+!  = : Boss 6 - color: red
+!  > : Boss 7 - color: purple
+!  ? : Boss 8 - color: green
+!
+!  Boss/movement information:
+!       When a boss is defined, the movement pattern can be specified.
+!       The movement pattern is a set of 8 movements that the boss can make.  When a
+!       boss hits an obstacle, it advances to the next 'movement entry' in the pattern.
+!
+!       On the first level, the boss is defined with the 'font' information.
+!       In levels 2-8, the boss pattern can be specified in a file.
+!
+!  The following is a definition of the movements:
+!      N : (1) North (y--)
+!     NE : (2) Northeast (y--, x++)
+!      E : (3) East (x++)
+!     SE : (4) Southeast (y++, x++)
+!      S : (5) South (y++)
+!     SW : (6) Southwest (y++, x--)
+!      W : (7) West (x--)
+!     NW : (8) Northwest (y--, x--)
+!
+!  ** Map editing notes:
+!     - The file is 'sensitive' to extra characters, etc, and would try to use
+!       them.  If you can enable 'view all' characters in your text editor, it
+!       will make it easier to edit the information.
+!
+!     - The MapGenerator is using a simple 'pattern reduction' method to help
+!       decrease the amount of data required to store the map.  To take 
+!       advantage of this, you might want to deliberately repeat elements in a
+!       level.
+! --------------------------------[Hack Away!]---------------------------------
+!234567890123456
+/s MythicFlight/title_screen/music_title_screen.txt
+!-start title screen 
+                
+ ``             
+````zddddddf    
+````zeeeeeeg    
+ ``             
+                
+            M   
+            Y   
+            T   
+            H   
+            I   
+            C   
+                
+            F   
+            L   
+            I   
+            G   
+            H   
+            T   
+                
+ ``             
+````zddddddf    
+````zeeeeeeg    
+ ``             
+!-end  title screen   
+/s MythicFlight/game_over_screen/music_game_over_screen.txt
+!-start game over screen
+                
+                
+                
+                
+                
+                
+                
+            G   
+            A   
+            M   
+            E   
+                
+            O   
+            V   
+            E   
+            R   
+                
+                
+                
+                
+                
+                
+                
+                
+!-end game over screen 
+/s MythicFlight/level_finished_screen/music_level_finished.txt
+!-start level completed screen
+l               
+nl              
+nm              
+m               
+                
+            L   
+            E   
+            V   
+            E   
+            L   
+                
+            F   
+            I   
+            N   
+            I   
+            S   
+            H   
+            E   
+            D   
+                
+ ``             
+````zddddddf    
+````zeeeeeeg    
+ ``             
+!-end level completed screen 
+/s MythicFlight/victory_screen/music_victory.txt
+!-start victory screen
+                
+ ``             
+````zddddddf    
+````zeeeeeeg    
+ ``             
+                
+                
+                
+            V   
+            I   
+            C   
+            T   
+            O   
+            R   
+            Y   
+                
+                
+                
+                
+ ``             
+````zddddddf    
+````zeeeeeeg    
+ ``             
+                
+!-end  victory screen
+/l MythicFlight/level_1_1/music_level_1_1.txt
+![start lvl 1.1]
+ ``             
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````z           
+````z           
+````z           
+````z           
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z           
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z     1     
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z           
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z           
+````z           
+````z           
+````            
+ ``             
+                
+                
+ ``             
+````            
+````            
+````zddddddddf  
+````zeeeeeeeeg  
+````            
+````            
+ ``             
+                
+ ``            1
+````            
+````            
+````         `` 
+````        ````
+````        ````
+````        ````
+`````      `````
+`````      `````
+````z       ````
+````zddddf  ````
+````zeeeeg  ````
+````z       ````
+````z       ````
+````zddddf  ````
+````zeeeeg  ````
+````z       ````
+`````0     `````
+`````      `````
+````        ````
+````         `` 
+````            
+ ``             
+                
+                
+ ``             
+````            
+````            
+````zddddddddf  
+````zeeeeeeeeg  
+````            
+```` 0          
+ ``             
+                
+                
+                
+ ``             
+````            
+````            
+````            
+````            
+ ``             
+                
+                
+ ``             
+````            
+````            
+````         `` 
+````        ````
+````        ````
+````        ````
+`````      `````
+`````      `````
+````        ````
+````    0   ````
+````        ````
+````         `` 
+ ``             
+                
+                
+ ``             
+````            
+````z           
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z           
+````zddddddddf  
+````zeeeeeeeeg  
+````z           
+````z 0         
+````zddddddddf  
+````zeeeeeeeeg  
+````z           
+````z           
+````zddddddddf  
+````zeeeeeeeeg  
+````z           
+````z           
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````zddddddf    
+````zeeeeeeg    
+````z           
+````z  0        
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````zddddddddf  
+````zeeeeeeeeg  
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+````z       8   
+````z           
+````z           
+````z           
+````z           
+````z           
+````z           
+![end   lvl 1.1]
+![boss  lvl 1.1 - no bitmap specified]
+/b  N,S,N,S,N,S,N,S
+/l MythicFlight/level_1_2/music_level_1_2.txt
+![start lvl 1.2]
+ ``             
+````            
+````            
+````            
+````            
+````            
+ ``             
+                
+l               
+nl              
+nnl             
+nnnl            
+nnnm            
+nnm             
+nm              
+m               
+                
+ ``             
+````            
+````            
+````         `` 
+````        ````
+````        ````
+````        ````
+`````      `````
+`````      `````
+`````      `````
+`````      `````
+`````   1  `````
+`````      `````
+`````      `````
+````        ````
+````        ````
+````         `` 
+ ``             
+                
+l               
+nl              
+nnl             
+nnnl            
+nnnnl           
+nnnnm           
+nnnm            
+nnm             
+nm              
+nl  0           
+nnl             
+nnnl            
+nnnm            
+nnm             
+nm              
+m               
+                
+                
+ ``             
+````            
+````            
+````zddddddf    
+````zeeeeeeg    
+````            
+````            
+````zddddddddf  
+````zeeeeeeeeg  
+````  0         
+````            
+````zddddddf    
+````zeeeeeeg    
+````            
+````            
+ ``             
+                
+ ``             
+````            
+````            
+````            
+````            
+````            
+ ``             
+                
+ ``             
+````            
+````            
+````         `` 
+````        ````
+````        ````
+````        ````
+`````      `````
+`````      `````
+`````      `````
+`````      `````
+`````      `````
+`````      `````
+`````      `````
+````   1    ````
+````        ````
+````         `` 
+ ``             
+                
+l               
+nl              
+nnl             
+nnnl            
+nnnm            
+nnm             
+nm              
+m               
+l               
+nl              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn   2        on
+nn           onn
+nn            on
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn            on
+nn           onn
+nn            on
+nn             o
+nn            on
+nn       2   onn
+nn            on
+nn              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnm        on
+nnnnm          o
+nnnm  0         
+nnm             
+nm              
+m               
+                
+ ``             
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````            
+````    9       
+````            
+````            
+````            
+````            
+````            
+![end   lvl 1.2]
+![boss  lvl 1.2]
+/b MythicFlight/level_1_2/boss_1_2.bmp N,W,S,E,N,W,S,E
+/l MythicFlight/level_2_1/music_level_2_1.txt
+![start lvl 2.1]
+l               
+nl              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnm        on
+nnnnm    2     o
+nnnm            
+nnm             
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn            on
+nn    3      onn
+nn            on
+nn             o
+nn            on
+nn              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnn   2   onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nm              
+m               
+                
+                
+                
+l               
+nl              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn   2     o
+nnnnnn        on
+nnnnnn       onn
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn              
+nnl      3      
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn            on
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn      3     on
+nn             o
+nn              
+nn              
+nnl             
+nnnl            
+nnnnl          o
+nnnnnl        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnn        on
+nnnnnn         o
+nnnnnn        on
+nnnnnn       onn
+nnnnnm        on
+nnnnm          o
+nnnm            
+nnm             
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn     2      on
+nn             o
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnr      :      
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nn              
+![end   lvl 2.1]
+![boss  lvl 2.1]
+/b MythicFlight/level_2_1/boss_2_1.bmp NW,SW,NW,S,NE,SE,NE,S
+/l MythicFlight/level_2_2/music_level_2_2.txt
+![start lvl 2.2]
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn     2      on
+nn             o
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn  3          o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn     2      on
+nn             o
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr 3           
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn     2      on
+nn             o
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn  3           
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nm              
+m               
+                
+nv     2        
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv              
+nv ;            
+nv              
+nv              
+nv              
+nv              
+nv              
+![end   lvl 2.2]
+![boss  lvl 2.2]
+/b MythicFlight/level_2_2/boss_2_2.bmp NW,SW,NW,S,NE,SE,NE,S
+/l MythicFlight/level_3_1/music_level_3_1.txt
+![start lvl 3.1]
+                
+                
+                
+                
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+              tt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+      2     tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+              tt
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+                
+              tt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+     4      tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+              tt
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt    4         
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+      2     tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+              tt
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+      4     tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+      4     tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+      2     tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+  <           tt
+              tt
+              tt
+              tt
+              tt
+              tt
+              tt
+![end   lvl 3.1]
+![boss  lvl 3.1]
+/b MythicFlight/level_3_1/boss_3_1.bmp W,N,E,S,W,N,E,S
+/l MythicFlight/level_3_2/music_level_3_2.txt
+![start lvl 3.2]
+                
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+ur              
+u               
+u               
+u               
+ur              
+ur              
+u               
+                
+                
+u               
+u               
+ur              
+u               
+u               
+ur      4       
+ur              
+u               
+u               
+u               
+u               
+u               
+                
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+                
+              tt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+     4      tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+              tt
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+u               
+ur              
+u               
+u               
+ur              
+u     2         
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+          tttttt
+         ttttttt
+      4  ttttttt
+          tttttt
+            tttt
+u               
+ur              
+u               
+u               
+u               
+ur              
+u               
+                
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+      2     tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+tt              
+tttt            
+ttttt           
+ttttt           
+tttt            
+tt              
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+      4   tttttt
+            tttt
+u               
+u               
+ur              
+u               
+ur              
+ur              
+u               
+            tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+            tttt
+            tttt
+yyyyyyyyy   tttt
+yyyyyyyyy   tttt
+      4     tttt
+          tttttt
+         ttttttt
+         ttttttt
+          tttttt
+            tttt
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u               
+u=              
+u               
+u               
+u               
+u               
+u               
+u               
+![end   lvl 3.2]
+![boss  lvl 3.2]
+/b MythicFlight/level_3_2/boss_3_2.bmp W,E,W,E,W,E,W,E
+/l MythicFlight/level_4_1/music_level_4_1.txt
+![start lvl 4.1]
+u               
+uq              
+uq              
+uq              
+uq              
+u               
+up              
+u               
+u               
+uq              
+uq              
+                
+nz              
+nzx             
+nzx             
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz  4       
+nz              
+nz              
+nz              
+nzx             
+nz              
+nz              
+nzx             
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+                
+u               
+uq              
+uq              
+uq              
+uq              
+u               
+up              
+u               
+                
+nz              
+nzx             
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+                
+nn  4           
+nnr             
+nn              
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnx             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nn            on
+nn           onn
+nn     2      on
+nn             o
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr 6           
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+                
+u               
+uq              
+uq              
+uq              
+u               
+up              
+u               
+up              
+u               
+up              
+u      2        
+u               
+uq              
+uq              
+uq              
+u               
+                
+nn             o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn  6           
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nm              
+m               
+                
+u      2        
+uq              
+uq              
+uq              
+uq              
+uq              
+u               
+up              
+u               
+up              
+u               
+up              
+u               
+up              
+u               
+up              
+u               
+up              
+u  >            
+uq              
+uq              
+uq              
+uq              
+uq              
+![end   lvl 4.1]
+![boss  lvl 4.1]
+/b MythicFlight/level_4_1/boss_4_1.bmp NW,SW,NW,S,NE,SE,NE,S
+/l MythicFlight/level_4_2/music_level_4_2.txt
+![start lvl 4.2]
+nz              
+nz              
+nzx             
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nzx             
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz  5       
+nz              
+nz              
+nz              
+nzx             
+nz              
+nz              
+nzx             
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+nz              
+nzx             
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz  5           
+nz              
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+nzx             
+nz              
+nz              
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nzx             
+nz              
+nz              
+nz              
+nz              
+nz              
+nzx             
+                
+nn              
+nnr             
+nn             o
+nn            on
+nn           onn
+nn     5      on
+nn             o
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr 6           
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nn              
+                
+nz              
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+nz              
+nz              
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz   onnnnnnnnnn
+nz              
+nz              
+nnnnnz          
+nnnnnz          
+nnnnnz          
+                
+nn   5         o
+nn            on
+nn           onn
+nn            on
+nn             o
+nn              
+nn             o
+nnr             
+nn            on
+nnr             
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nn  6           
+nn             o
+nnx             
+nn            on
+nnr             
+nnr             
+nn              
+nn             o
+nnr             
+nn             o
+nnnnvv        on
+nnnnnv       onn
+nnnnvv        on
+nn             o
+nm              
+m               
+                
+nz     5        
+nzx             
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz              
+nz ?            
+nz              
+nz              
+nz              
+nz              
+nzx             
+![end   lvl 4.2]
+![boss  lvl 4.2]
+/b MythicFlight/level_4_2/boss_4_2.bmp N,W,S,E,N,W,S,E

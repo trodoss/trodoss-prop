@@ -1,0 +1,5 @@
+The ORE [Oldbitcollector Retro (Game) Engine] Text driver is not "feature complete," and has not been fully tested/released.
+The developent of this engine is in the "MSPacman" thread on the Hydra forums.
+
+To generate the font from the simple_2bpp_font.bmp bitmap Enter:
+FontGenerator simple_2bpp_font.bmp Font_Pacman.spin O

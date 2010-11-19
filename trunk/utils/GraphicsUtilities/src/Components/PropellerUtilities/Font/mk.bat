@@ -1,0 +1,1 @@
+C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\csc.exe /t:library /out:..\..\..\..\bin\PropellerUtilities.Font.dll *.cs

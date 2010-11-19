@@ -1,0 +1,5 @@
+In order to obtain the most recent version of the Potato_Text driver, please see the OBEX.
+
+
+To generate the font from the simple_font.bmp bitmap Enter:
+FontGenerator simple_font.bmp Font_ATARI_Demo.spin P

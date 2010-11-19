@@ -1,0 +1,1 @@
+C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\csc.exe /t:exe /out:..\..\bin\GBMFix.exe *.cs /r:..\..\bin\PropellerPowered.Maps.dll /r:..\..\bin\PropellerPowered.General.dll

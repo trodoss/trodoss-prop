@@ -1,0 +1,2 @@
+C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\csc.exe /t:exe /out:..\..\bin\FFDataBuilder.exe /r:..\..\bin\PropellerPowered.General.dll /r:..\..\bin\PropellerPowered.Sound.dll /r:..\..\bin\PropellerPowered.Maps.dll *.cs
+pause

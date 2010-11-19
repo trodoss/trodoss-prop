@@ -1,0 +1,317 @@
+' ------------------------------------------------------------------------
+' Fantasy Fighter Data Builder v0.1
+' ------------------------------------------------------------------------
+
+' ------------------------------------------------------------------------
+' Event Commands:
+' ------------------------------------------------------------------------
+' EXIT_EVENT [identifier] ([location_x], [location_y], [map_number], [event_number])
+'
+'    location_x : the map X location (1 based) where the event occurs
+'    location_y : the map Y location (1 based) where the event occurs
+'    map_number : the map number (0 based) where the player is 'exiting to'
+'    event_number : the event number (0 based) where the player is 'exiting to'
+'
+'    Exits are a linked pair (one exit leads to another) from one map to another. 
+'
+'
+'  SHOP_EVENT [identifier]  ([location_x], [location_y], [level])
+'
+'    location_x : the map X location (1 based) where the event occurs
+'    location_y : the map Y location (1 based) where the event occurs
+'    level : the level (0 based) of the shop
+'
+'
+'  HEAL_EVENT[identifier]  ([location_x], [location_y])
+'
+'    location_x : the map X location (1 based) where the event occurs
+'    location_y : the map Y location (1 based) where the event occurs
+'
+'
+'  TEXT_EVENT [identifier] ([location_x], [location_y], [text])
+'
+'    location_x : the map X location (1 based) where the event occurs
+'    location_y : the map Y location (1 based) where the event occurs
+'    text : up to 16 characters of text that is said
+'
+'
+'  MONSTER_EVENT [identifier]  ([location_x], [location_y], [monster_id])
+'
+'    location_x : the map X location (1 based) where the event occurs
+'    location_y : the map Y location (1 based) where the event occurs
+'    monster_id : the monster id(0 based) that is encountered
+'
+'
+' ------------------------------------------------------------------------
+' Monster definition:
+' ------------------------------------------------------------------------
+' MONSTER [identifier] ([base_type], [element], [hit_points], [gold/experience_value])
+'
+'    base_type : 0 = GOBO (random) Gobo
+'                1 = WOLF (random) 
+'                2 = AVES (random) 
+'                3 = DRAC (non-random) 
+'                4 = DETH (non-random)
+'
+'    element : 0 = IRON (earth)
+'              1 = LIT (lighting/air)
+'              2 = ICE (cold/water)
+'              3 = FIRE
+'
+'    hit_points: number between 1 and 255
+'
+'    experience_value: number between 1 and 32766 = experience and gold given for defeating
+'
+'
+' ------------------------------------------------------------------------
+' Map definition:
+' ------------------------------------------------------------------------
+' MAP [identifier] ([gbm_filename], [song_index], [has_random_monsters])
+'
+'
+' ------------------------------------------------------------------------
+' SONG definition:
+' ------------------------------------------------------------------------
+' SONG [song_filename], [index]
+'  index: 0 ... x
+
+' define some base constants
+Const True = 1
+Const False = 0
+
+'define physical entries for each of the pre-defined text entries
+Const TEXT_TITLE = 0
+Const TEXT_AUTHOR = 1
+Const TEXT_ELEMENT_1 = 2
+Const TEXT_ELEMENT_2 = 3
+Const TEXT_ELEMENT_3 = 4
+Const TEXT_ELEMENT_4 = 5
+Const TEXT_MONSTER_TYPE_1 = 6
+Const TEXT_MONSTER_TYPE_2 = 7
+Const TEXT_MONSTER_TYPE_3 = 8
+Const TEXT_MONSTER_TYPE_4 = 9
+Const TEXT_MONSTER_TYPE_5 = 10
+
+Const ITEM_ARMOR = 0
+Const ITEM_SWORD = 1
+
+Const ITEM_LEVEL_1 = 0
+Const ITEM_LEVEL_2 = 1
+
+' -- Set up meaningful identifiers for game elements --
+
+' define song constants
+Const SONG_MAIN = 0
+Const SONG_BATTLE = 1
+Const SONG_VICTORY = 2
+
+' define the monster type constants
+Const TYPE_GOBO = 0
+Const TYPE_WOLF = 1
+Const TYPE_AVES = 2
+Const TYPE_DRAC = 3
+Const TYPE_DETH = 4
+
+' define element constants
+Const ELEMENT_IRON = 0
+Const ELEMENT_LIT = 1
+Const ELEMENT_ICE = 2
+Const ELEMENT_FIRE = 3
+
+' ---------------------------------------------------
+' Global Text Definition
+' ---------------------------------------------------
+Text ("FANTASY FIGHTER", TEXT_TITLE)
+Text ("2010 TRODOSS", TEXT_AUTHOR)
+
+' define elements text
+Text ("IRON", TEXT_ELEMENT_1)
+Text ("LIT", TEXT_ELEMENT_2)
+Text ("ICE", TEXT_ELEMENT_3)
+Text ("FIRE", TEXT_ELEMENT_4)
+
+' define monster type text
+Text ("GOBO", TEXT_MONSTER_TYPE_1)
+Text ("WOLF", TEXT_MONSTER_TYPE_2)
+Text ("AVES", TEXT_MONSTER_TYPE_3)
+Text ("DRAC", TEXT_MONSTER_TYPE_4)
+Text ("DETH", TEXT_MONSTER_TYPE_5)
+
+' ---------------------------------------------------
+' Global Item Definition
+' ---------------------------------------------------
+' -- level 1 items (Shop_1)
+Item Iron_Armor (ITEM_LEVEL_1, ITEM_ARMOR, ELEMENT_IRON, 50)
+Item Lit_Armor (ITEM_LEVEL_1, ITEM_ARMOR, ELEMENT_LIT, 100)
+Item Iron_Sword (ITEM_LEVEL_1, ITEM_SWORD, ELEMENT_IRON, 100)
+Item Lit_Sword (ITEM_LEVEL_1, ITEM_SWORD, ELEMENT_LIT, 300)
+
+' -- level 2 items (Shop_2)
+Item Ice_Armor (ITEM_LEVEL_2, ITEM_ARMOR, ELEMENT_ICE, 250)
+Item Fire_Armor (ITEM_LEVEL_2, ITEM_ARMOR, ELEMENT_FIRE, 500)
+Item Ice_Sword (ITEM_LEVEL_2, ITEM_SWORD, ELEMENT_ICE, 500)
+Item Fire_Sword (ITEM_LEVEL_2, ITEM_SWORD, ELEMENT_FIRE, 700)
+
+' ---------------------------------------------------
+' Global Song Definition
+' ---------------------------------------------------
+Song Main_Theme ("music\main_menu.txt", SONG_MAIN)
+Song Battle_Theme ("music\battle.txt", SONG_BATTLE)
+Song Victory_Theme ("music\victory.txt", SONG_VICTORY)
+
+Song Overworld_Theme ("music\overworld.txt")
+Song Town_Theme ("music\town.txt")
+Song Cave_Theme ("music\cave.txt")
+
+' ---------------------------------------------------
+' Overworld NW
+' ---------------------------------------------------
+Map Overworld_NW ("gfx\overworld_nw.gbm", Overworld_Theme, True)
+
+   ' -- define the random monsters on the map --
+   Monster Iron_Gobo (TYPE_GOBO, ELEMENT_IRON, 10, 5)
+   Monster Iron_Wolf (TYPE_WOLF, ELEMENT_IRON, 15, 10)
+
+   ' --- define map exits ------
+   Exit_Event To_Sola_Town (3, 4, Sola_Town, To_Overworld_NW)
+   Exit_Event To_Overworld_SW (9, 32, Overworld_SW, To_Overworld_NW)
+   Exit_Event To_Lit_Cave (25, 23, Lit_Cave, To_Overworld_NW)
+     
+End Map
+
+' ---------------------------------------------------
+'  Sola Town
+' ---------------------------------------------------
+Map Sola_Town ("gfx\sola_town.gbm", Town_Theme, False)
+   
+   ' -- test of text events --
+   'Text_Event Healer_Shop (28, 30, "HELLO STRANGER")
+   Heal_Event Healer_Shop_1 (28, 30)
+   Shop_Event Weapon_Shop_1 (5, 11, ITEM_LEVEL_1)
+   
+   ' --- define map exits ------
+   Exit_Event To_Overworld_NW (17, 32, Overworld_NW, To_Sola_Town)
+    
+End Map
+
+' ---------------------------------------------------
+'  Lit Cave
+' ---------------------------------------------------
+Map Lit_Cave ("gfx\lit_cave.gbm", Cave_Theme, True)
+
+   ' -- define the random monsters on the map --
+   Monster Lit_Gobo (TYPE_GOBO, ELEMENT_LIT, 15, 20)
+   Monster Iron_Aves (TYPE_AVES, ELEMENT_IRON, 20, 25)
+   
+   ' -- define non-random monster (boss)
+   Monster Lit_Drac (TYPE_DRAC, ELEMENT_LIT, 50, 100)
+   
+   ' -- define non-random monster (boss) event
+   Monster_Event Lit_Drac_Lair (5, 10, Lit_Drac)
+
+   ' --- define map exits ------
+   Exit_Event To_Overworld_NW (16, 16, Overworld_NW, To_Lit_Cave)
+   
+End Map
+
+' ---------------------------------------------------
+' Overworld SW
+' ---------------------------------------------------
+Map Overworld_SW ("gfx\overworld_sw.gbm", Overworld_Theme, True)
+
+   ' -- define the random monsters on the map --
+   Monster Lit_Wolf (TYPE_WOLF, ELEMENT_LIT, 25, 30)
+   Monster Lit_Aves (TYPE_AVES, ELEMENT_LIT, 30, 35)
+
+   ' --- define map exits ------
+   Exit_Event To_Overworld_NW (9, 2, Overworld_NW, To_Overworld_SW)
+   Exit_Event To_Ice_Town (23, 15, Ice_Town, To_Overworld_SW)
+   Exit_Event To_Overworld_SE (32, 16, Overworld_SE, To_Overworld_SW)
+   
+End Map
+
+' ---------------------------------------------------
+' Ice Town
+' ---------------------------------------------------
+Map Ice_Town ("gfx\ice_town.gbm", Town_Theme, False)
+
+   ' -- test of text events --
+   Heal_Event Healer_Shop_2 (6, 31)
+   Shop_Event Weapon_Shop_2 (18, 7, ITEM_LEVEL_1)
+   
+   ' --- define map exits ------
+   Exit_Event To_Overworld_SW (2, 6, Overworld_SW, To_Ice_Town)
+   Exit_Event To_Ice_Cave (27, 4, Ice_Cave, To_Ice_Town)
+     
+End Map
+
+' ---------------------------------------------------
+' Ice Cave (Below Ice Town)
+' ---------------------------------------------------
+Map Ice_Cave ("gfx\ice_cave.gbm", Cave_Theme, True)
+
+   ' -- define the random monsters on the map --
+   Monster Ice_Gobo (TYPE_GOBO, ELEMENT_ICE, 35, 40)
+   Monster Ice_Wolf (TYPE_WOLF, ELEMENT_ICE, 40, 45)
+   
+    ' -- define non-random monster (boss) event
+   Monster Ice_Drac (TYPE_DRAC, ELEMENT_ICE, 80, 200)
+   
+   ' -- define non-random monster (boss) event
+   Monster_Event Ice_Drac_Lair (11, 26, Ice_Drac)   
+   
+   ' --- define map exits ------
+   Exit_Event To_Ice_Town (27, 4, Ice_Town, To_Ice_Cave)
+     
+End Map
+
+' ---------------------------------------------------
+' Overworld SE
+' ---------------------------------------------------
+Map Overworld_SE ("gfx\overworld_se.gbm", Overworld_Theme, True)
+
+   ' -- define the random monsters on the map --
+   Monster Fire_Gobo (TYPE_GOBO, ELEMENT_FIRE, 45, 50)
+   Monster Ice_Aves (TYPE_AVES, ELEMENT_ICE, 55, 60)
+
+   ' --- define map exits ------
+   Exit_Event To_Overworld_SW (2, 16, Overworld_SW, To_Overworld_SE)
+   Exit_Event To_Fort_Town (23, 24, Fort_Town, To_Overworld_SE)
+   Exit_Event To_Fire_Cave (18, 16, Fire_Cave, To_Overworld_SE)
+   
+End Map
+
+' ---------------------------------------------------
+' Fort Town
+' ---------------------------------------------------
+Map Fort_Town ("gfx\fort_town.gbm", Town_Theme, False)
+
+   ' -- test of text events --
+   Heal_Event Healer_Shop_3 (26, 13)
+   Shop_Event Weapon_Shop_3 (7, 30, ITEM_LEVEL_2)
+
+   ' --- define map exits ------
+   Exit_Event To_Overworld_SE (17, 32, Overworld_SE, To_Fort_Town)
+   
+End Map
+
+
+' ---------------------------------------------------
+' Fire Cave
+' ---------------------------------------------------
+Map Fire_Cave ("gfx\fire_cave.gbm", Cave_Theme, True)
+
+   ' -- define the random monsters on the map --
+   Monster Fire_Wolf (TYPE_WOLF, ELEMENT_FIRE, 60, 65)
+   Monster Fire_Aves (TYPE_AVES, ELEMENT_FIRE, 70, 70)
+   
+    ' -- define non-random monster (boss) event  
+   Monster Fire_Deth (TYPE_DETH, ELEMENT_FIRE, 150, 500) 
+   
+   ' -- define non-random monster (boss) event
+   Monster_Event Fire_Deth_Lair (21, 11, Fire_Deth)    
+
+   ' --- define map exits ------
+   Exit_Event To_Overworld_SE (4, 3, Overworld_SE, To_Fire_Cave)
+   
+End Map
