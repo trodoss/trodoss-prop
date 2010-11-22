@@ -1,0 +1,2 @@
+C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\csc.exe /t:exe /out:..\bin\PINTCompiler.exe /r:..\bin\PINTCompiler.Assembly.dll /r:..\bin\PINTCompiler.Utilities.dll /r:..\bin\PINTCompiler.PINTBasic.dll *.cs /debug
+pause
