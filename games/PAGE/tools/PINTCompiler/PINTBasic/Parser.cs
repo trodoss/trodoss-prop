@@ -1,0 +1,579 @@
+using System;
+using System.Collections;
+using System.IO;
+using PINTCompiler.Utilities;
+//****************************************
+// PINT Compiler Assembler Parser
+// 2010 - trodoss
+//See end of file for terms of use.  
+//***************************************
+namespace PINTCompiler.PINTBasic {
+	public class Parser {
+		private PINTBasicApplication thisApplication = null;
+		private	PINTBasicRoom thisRoom = null;
+		private bool canContinue = true;
+		private bool endOfSource = false;
+		private int i = 0;
+		private int currentLine = 0;
+		
+		private void WriteError(CompilationLog thisLog, SourceLine thisLine, string message) {
+			thisLog.CanContinue = false;
+			thisLog.AddError(thisLine.Source, thisLine.LineNumber, message);
+		}
+		
+		private void WriteWarning(CompilationLog thisLog, SourceLine thisLine, string message) {
+			thisLog.AddWarning(thisLine.Source, thisLine.LineNumber, message);
+		}
+
+		private void WriteInformation(CompilationLog thisLog, SourceLine thisLine, string message) {
+			thisLog.AddInformation(thisLine.Source, thisLine.LineNumber, message);
+		}
+			
+		public EventType ResolveAsEventType(string thisElement, CompilationLog thisLog, SourceLine thisLine) {
+			try {
+				
+				EventType returnType = (EventType) Enum.Parse(typeof(EventType), thisElement, true);
+				return returnType;
+			} catch {
+				WriteError(thisLog, thisLine, "unable to resolve '"+thisElement+"' as a valid event type");
+				return EventType.Undefined;
+			}
+		}
+		
+		public SourceLine GetNextLine(SourceLineList lines) {
+			if (currentLine < lines.Count) {
+				SourceLine thisLine = lines[currentLine];
+				currentLine++;
+				return thisLine;
+			} else {
+				endOfSource = true;
+				return null;
+			}
+		}
+		
+		public PINTBasicExpression ResolveAsExpressionElement (string thisElement, CompilationLog thisLog, SourceLine thisLine) {
+			PINTBasicExpression returnExpression = null;
+			int thisValue = -1;
+			//check first to see if this is a literal
+			try {
+				thisValue = Convert.ToInt32(thisElement);
+				returnExpression = new LiteralExpression(thisValue);
+			} catch {
+				thisElement = thisElement.ToUpper();
+				//try to resolve the element as a constant
+				PINTBasicConstant testConstant = thisApplication.Constants.FindByName(thisElement);
+				if (testConstant != null) {
+					//found as a constant expression
+					returnExpression = new ConstantExpression(testConstant.ID);
+					testConstant = null;
+				} else {
+					PINTBasicByte testByte = thisApplication.Variables.FindByName(thisElement);
+					if (testByte != null) {
+						returnExpression = new GlobalVariableExpression(testByte.ID);
+						testByte = null;
+					} else {
+						testByte = thisRoom.Variables.FindByName(thisElement);
+						if (testByte != null) {
+							returnExpression = new RoomVariableExpression(testByte.ID);
+							testByte = null;
+						} else {
+							WriteError(thisLog, thisLine, "unable to resolve '"+thisElement+"' as a valid expression element");
+						}
+					}
+				}
+				
+			}
+			return returnExpression;
+		}
+		
+		public int ResolveAsConstantOrNumber(string thisElement, CompilationLog thisLog, SourceLine thisLine) {
+			int returnValue = -1;
+			try {
+				returnValue = Convert.ToInt32(thisElement);
+			} catch {
+				PINTBasicConstant testConstant = thisApplication.Constants.FindByName(thisElement);
+				if (testConstant != null) {
+					returnValue = testConstant.Value;
+				} else {
+					WriteError(thisLog, thisLine, "unable to resolve '"+thisElement+"' as a constant or number");
+				}
+			}
+			return returnValue;
+		
+		}
+		
+		public ComparisonExpression ExpectedComparisonExpression (string[] elements, CompilationLog thisLog, SourceLine thisLine) {
+			ComparisonExpression returnExpression  = null;
+			string thisElement = "";
+			ComparisonOperator thisOperator = ComparisonOperator.EqualTo;
+
+			i++;
+			if (i+1 <= elements.Length) {
+				thisElement = elements[i];
+				PINTBasicExpression leftExpression = ResolveAsExpressionElement(thisElement, thisLog, thisLine);
+				if (leftExpression != null) {
+					i++;
+					if (i+1 <= elements.Length) {
+						thisElement = elements[i];
+						switch (thisElement) {
+							case "<":
+								thisOperator = ComparisonOperator.LessThan;
+								break;
+								
+							case "=":
+								thisOperator = ComparisonOperator.EqualTo;
+								break;
+
+							case ">":
+								thisOperator = ComparisonOperator.GreaterThan;
+								break;
+
+							case "<=":
+								thisOperator = ComparisonOperator.LessThanOrEqualTo;
+								break;									
+									
+							case ">=":
+								thisOperator = ComparisonOperator.GreaterThanOrEqualTo;
+								break;										
+
+							case "<>":
+								thisOperator = ComparisonOperator.NotEqualTo;
+								break;		
+									
+							default:
+								WriteError(thisLog, thisLine, "element '"+thisElement+"' is not a valid comparison operator");
+								break;
+						}
+
+						i++;
+						if (i+1 <= elements.Length) {
+							thisElement = elements[i];
+							PINTBasicExpression rightExpression = ResolveAsExpressionElement(thisElement, thisLog, thisLine);
+							if (rightExpression != null) {
+								returnExpression = new ComparisonExpression(leftExpression, rightExpression, thisOperator);
+							}
+						}
+							
+					} else {
+						WriteError(thisLog, thisLine, "missing comparison operator in expression");
+					}
+				}
+			} else {
+				WriteError(thisLog, thisLine, "expected comparison expression");
+			}
+			
+			return returnExpression;
+		}
+		
+		public PINTBasicExpression ExpectedArithmeticExpression (string[] elements, CompilationLog thisLog, SourceLine thisLine) {
+			PINTBasicExpression returnExpression  = null;
+			string thisElement = "";
+			ArithmeticOperator thisOperator = ArithmeticOperator.Add;
+
+			i++;
+			if (i+1 <= elements.Length) {
+				thisElement = elements[i];
+				PINTBasicExpression leftExpression = ResolveAsExpressionElement(thisElement, thisLog, thisLine);
+				if (leftExpression != null) {
+					i++;
+					if (i+1 <= elements.Length) {
+						thisElement = elements[i];
+						switch (thisElement) {
+							case "+":
+								thisOperator = ArithmeticOperator.Add;
+								break;
+								
+							case "-":
+								thisOperator = ArithmeticOperator.Subtract;
+								break;
+
+							case "*":
+								thisOperator = ArithmeticOperator.Multiply;
+								break;
+
+							case "/":
+								thisOperator = ArithmeticOperator.Divide;
+								break;									
+									
+									
+							default:
+								WriteError(thisLog, thisLine, "element '"+thisElement+"' is not a valid arithmetic operator");
+								break;
+						}
+
+						i++;
+						if (i+1 <= elements.Length) {
+							thisElement = elements[i];
+							PINTBasicExpression rightExpression = ResolveAsExpressionElement(thisElement, thisLog, thisLine);
+							if (rightExpression != null) {
+								returnExpression = new ArithmeticExpression(leftExpression, rightExpression, thisOperator);
+							}
+						}
+							
+					} else {
+						WriteError(thisLog, thisLine, "missing arithmetic operator in expression");
+					}
+				}
+			} else {
+				WriteError(thisLog, thisLine, "expected arithmetic expression");
+			}
+			
+			return returnExpression;
+		}		
+		
+		public string ExpectedObjectAssignment (string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			string returnAssignment = null;
+			if (ExpectedKeyword(elements, "(", statementName, thisLog, thisLine)) {
+				i++;
+				if (i+1 <= elements.Length) {
+					returnAssignment = elements[i];
+					//check for the close parenthesis
+					ExpectedKeyword(elements, ")", statementName, thisLog, thisLine);
+				} else {
+					WriteError(thisLog, thisLine, "expected value in "+statementName+" statement");
+				}
+			}
+			return returnAssignment;
+		}
+		
+		public bool ExpectedKeyword (string[] elements, string expectedElement, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			i++;
+			if (i+1 <= elements.Length) {
+				if (elements[i].ToUpper() != expectedElement) {
+					WriteError(thisLog, thisLine, "expected keyword '"+expectedElement+"' instead of '"+elements[i].ToUpper()+"' in "+statementName+" statement");
+					return false;
+				} else {
+					return true;
+				}
+			} else {
+				WriteError(thisLog, thisLine, "expected keyword '"+expectedElement+"' in "+statementName+" statement");
+				return false;
+			}
+		}
+		
+		public string ExpectedIdentifier (string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			string returnIdentifier = null;
+			i++;
+			if (i+1 <= elements.Length) {
+				returnIdentifier = elements[i].ToUpper();
+			} else {
+				WriteError(thisLog, thisLine, "expected identifier in "+statementName+" statement");
+			}
+			return returnIdentifier;
+		}
+		
+		public string ExpectedStringLiteral(string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			string returnLiteral = null;
+			i++;
+			if (i+1 <= elements.Length) {
+				returnLiteral = elements[i].ToUpper();
+			} else {
+				WriteError(thisLog, thisLine, "expected string literal in "+statementName+" statement");
+			}
+			return returnLiteral;
+		}		
+
+		public string ExpectedObject (string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			string returnObjectName = null;
+			i++;
+			if (i+1 <= elements.Length) {
+				returnObjectName = elements[i].ToUpper();
+				switch (returnObjectName) {
+					case "BACKDROP":
+					case "BYTE":										
+					case "PIC":
+						break;
+															
+					default:
+						WriteError(thisLog, thisLine, "object type '" +returnObjectName+ "' not recognized in "+statementName+" statement");
+						returnObjectName = null;
+						break;					
+				}
+			} else {
+				WriteError(thisLog, thisLine, "expected object type in "+statementName+" statement");
+			}
+			return returnObjectName;
+		}
+		
+		public PINTBasicStatementList ParseStatements(CompilationLog thisLog, SourceLineList lines, string terminatorStatement) {
+			PINTBasicStatementList returnList = new PINTBasicStatementList();
+			bool terminatorReached = false;
+			if (canContinue) {
+				while (!endOfSource) {
+//				for (statementLine = currentLine; statementLine<lines.Count; statementLine++) {
+					SourceLine thisLine = GetNextLine(lines);//lines[statementLine];
+					if (thisLine != null) {
+						string[] elements = Tokenizer.TokenizeLine(thisLine.Code);
+						canContinue = true;
+						
+						if (elements.Length > 0) {
+							for (i=0; i<elements.Length; i++) {
+								string element = elements[i].ToUpper();
+								
+								if (element.Length > 0) {
+									//indicates that we have found a comment, so skip the element processing
+									if (element.Substring(0,1) == "'") canContinue = false;
+								}
+									
+								if (canContinue) {
+									switch (element) {
+										//********* Statement Parsing *************************************************************************************
+										case "SAY":
+											if (ExpectedKeyword(elements, "(", element, thisLog, thisLine)) {
+												
+												//parse out the say text
+												string thisSayText = ExpectedStringLiteral(elements, element, thisLog, thisLine);
+												
+												if (thisSayText != null) {
+													if (ExpectedKeyword(elements, ")", element, thisLog, thisLine)) {
+														int foundID = thisApplication.Texts.FindIndexByText(thisSayText);
+														if (foundID == -1) foundID = thisApplication.AddText(thisSayText);
+														returnList.Add(new PINTBasicSay(thisLine, foundID));
+													}
+												}
+											}
+											break;
+											
+										case "IF":
+											if (ExpectedKeyword(elements, "(", element, thisLog, thisLine)) {
+												ComparisonExpression thisIfCondition =  ExpectedComparisonExpression (elements, thisLog, thisLine);
+												if (ExpectedKeyword(elements, ")", element, thisLog, thisLine)) {
+													if (ExpectedKeyword(elements, "THEN", element, thisLog, thisLine)) {
+														PINTBasicIf thisIf = new PINTBasicIf(thisLine, thisIfCondition);
+														thisIf.Met = ParseStatements(thisLog, lines, "IF");
+														returnList.Add(thisIf);
+														thisIf = null;
+													}
+												}
+											}
+											break;
+											
+										case "WHILE":
+											if (ExpectedKeyword(elements, "(", element, thisLog, thisLine)) {
+												ComparisonExpression thisWhileCondition =  ExpectedComparisonExpression (elements, thisLog, thisLine);
+												if (ExpectedKeyword(elements, ")", element, thisLog, thisLine)) {
+													PINTBasicWhile thisWhile = new PINTBasicWhile(thisLine, thisWhileCondition);
+													thisWhile.Met = ParseStatements(thisLog, lines, "WHILE");
+													returnList.Add(thisWhile);
+													thisWhile = null;
+												}
+											}
+											break;
+											
+										//special case: 'END' (terminator) statements*****
+										case "END":
+											//look at the next keyword, and determine what action needs to be taken
+											i++;
+											if (i+1 <= elements.Length) {
+												if (elements[i].ToUpper() == terminatorStatement) {
+													terminatorReached = true;
+													break;
+													
+												} else {
+													WriteError(thisLog, thisLine, "unexpected END "+elements[i].ToUpper()+" statement");
+												}	
+											}
+											break;
+										
+										//attempt to see if this is an assignment statement
+										default:
+											//to do: process assignments or method invocation
+											break;
+									}
+								}
+								if (terminatorReached) break;
+							}
+						}
+						if (terminatorReached) break;
+					}
+				}
+			}
+			if (!terminatorReached) {
+				WriteError(thisLog, lines[lines.Count-1], "expected END "+terminatorStatement+" statement");
+			}
+			return returnList;
+		}
+		
+		public PINTBasicApplication Parse(CompilationLog thisLog, SourceLineList lines) {
+			thisApplication = new PINTBasicApplication();
+			thisRoom = null;
+			canContinue = true;
+			i=0;
+			while (!endOfSource) {
+			//for (currentLine=0; currentLine<lines.Count; currentLine++) {
+			
+			//foreach (SourceLine thisLine in lines) {
+				SourceLine thisLine = GetNextLine(lines);//lines[currentLine];
+				if (thisLine != null) {
+					string[] elements = Tokenizer.TokenizeLine(thisLine.Code);
+					canContinue = true;
+					if (elements.Length > 0) {
+						for (i=0; i<elements.Length; i++) {
+							string element = elements[i].ToUpper();
+							
+							if (element.Length > 0) {
+								//indicates that we have found a comment, so skip the element processing
+								if (element.Substring(0,1) == "'") canContinue = false;
+							}
+								
+							if (canContinue) {
+								switch (element) {
+									//global non-label commands
+									case "CONST":
+										string constantName = ExpectedIdentifier(elements, element, thisLog, thisLine);
+										
+										if (constantName != null) {				
+											//check to make sure the name is unique
+											if (thisApplication.Constants.FindByName(constantName) != null) {
+												WriteError(thisLog, thisLine, "constant named '" + constantName + "' has already been defined");
+											} else {
+												if (ExpectedKeyword(elements, "=", element, thisLog, thisLine)) {
+													i++;
+													if (i+1 <= elements.Length) {
+														string valueString = elements[i];
+														try {
+															int constantValue = Convert.ToInt32(valueString);
+															thisApplication.AddConstant(constantName, constantValue);
+														} catch {
+															WriteError(thisLog, thisLine, "unable to parse numeric value in constant declaration: value = '"+valueString+"'");
+														}											
+													} else {
+														WriteError(thisLog, thisLine, "expected value in constant declaration");
+													}
+												}
+											}
+										}
+										break;									
+										
+									case "DIM":
+										string dimIdentifier = ExpectedIdentifier(elements, element, thisLog, thisLine);
+										if (dimIdentifier != null) {
+											if (ExpectedKeyword(elements, "AS", element, thisLog, thisLine)) {
+												string thisObjectName = ExpectedObject(elements, element, thisLog, thisLine);											
+												string fileName = null;
+												switch (thisObjectName) {
+												
+													case "BACKDROP":
+														fileName = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
+														if (fileName != null) {
+															if (thisRoom != null) {
+																if (thisRoom.Backdrop == null) {
+																	thisRoom.Backdrop = new PINTBasicBackdrop(0, dimIdentifier, fileName);
+																} else {
+																	WriteError(thisLog, thisLine, "backdrop resources cannot be defined more than once in a Room object");
+																}
+															} else {
+																WriteError(thisLog, thisLine, "backdrop resources cannot be defined outside a Room object");
+															}
+														}
+														break;
+		
+													case "PIC":
+														fileName = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
+														if (fileName != null) {
+															if (!thisApplication.AddPic(dimIdentifier, fileName)) WriteError(thisLog, thisLine, "maximum number of Pic resources exceeded.");
+														}
+														break;
+														
+													case "BYTE":
+														if (thisRoom != null) {
+															if (!thisRoom.AddVariable(dimIdentifier)) WriteError(thisLog, thisLine, "maximum number Room object variables exceeded.");
+														} else {
+															if (!thisApplication.AddVariable(dimIdentifier)) WriteError(thisLog, thisLine, "maximum number of global variables exceeded.");
+														}
+														break;
+												}
+											}
+										}									
+										break;
+										
+										
+									case "ROOM":
+										string roomIdentifier = ExpectedIdentifier(elements, element, thisLog, thisLine);
+										int roomID = ResolveAsConstantOrNumber(roomIdentifier, thisLog, thisLine);
+										if (roomID > -1) {
+											if (thisRoom == null) {
+												thisRoom = new PINTBasicRoom(roomID, roomIdentifier);
+											} else {
+												WriteError(thisLog, thisLine, "Room object declaration without an END ROOM statement for the previous Room object");
+											}
+										}
+										break;
+										
+									case "EVENT":
+										string eventIdentifier = ExpectedIdentifier(elements, element, thisLog, thisLine);
+										EventType thisType = ResolveAsEventType(eventIdentifier, thisLog, thisLine);
+										if (thisType != EventType.Undefined) {
+											if (thisRoom != null) {
+												if (thisRoom.Events.FindByName(eventIdentifier) == null) {
+													PINTBasicEvent thisEvent = new PINTBasicEvent((int)thisType, eventIdentifier);
+													thisEvent.Statements = ParseStatements(thisLog, lines, "EVENT");
+													thisRoom.Events.Add(thisEvent);
+													thisEvent = null;
+												} else {
+													WriteError(thisLog, thisLine, "event with the identifier '" +eventIdentifier+ "' has already been defined for Room '"+thisRoom.Name+"'");
+												}
+											} else {
+												WriteError(thisLog, thisLine, "event '"+eventIdentifier+"' cannot be defined outside of a Room object");
+											}
+										}
+										break;
+														
+									//special case: 'END' (terminator) statements*****
+									case "END":
+										//look at the next keyword, and determine what action needs to be taken
+										i++;
+										if (i+1 <= elements.Length) {
+											switch(elements[i].ToUpper()) {
+												case "ROOM":
+												if (thisRoom != null) {
+													thisApplication.Rooms.Add(thisRoom);
+													thisRoom = null;
+												} else {
+													WriteError(thisLog, thisLine, "unexpected END ROOM statement");
+												}
+												break;
+												
+												default:
+													WriteError(thisLog, thisLine, "unexpected END "+elements[i].ToUpper()+" statement");
+													break;
+											}
+											
+										}
+										break;
+										
+									default:
+										WriteError(thisLog, thisLine, "unrecognized statement or keyword '"+element+"' outside of an Event");
+										break;
+									
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			return thisApplication;
+		}
+		
+		
+		
+	}
+}
+/*
++------------------------------------------------------------------------------------------------------------------------------+
+                                                   TERMS OF USE: MIT License                                                                                                              
++------------------------------------------------------------------------------------------------------------------------------
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation     
+files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following conditions:                                                                   
+                                                                                                                              
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+                                                                                                                              
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         
++------------------------------------------------------------------------------------------------------------------------------+
+*/
