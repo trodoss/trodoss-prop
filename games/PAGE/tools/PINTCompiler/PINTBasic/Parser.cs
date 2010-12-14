@@ -375,9 +375,36 @@ namespace PINTCompiler.PINTBasic {
 											}
 											break;
 										
-										//attempt to see if this is an assignment statement
-										default:
-											//to do: process assignments or method invocation
+										default:										
+											//process assignments or method invocation, and only at the beginning of a line
+											if (i == 0 ) {
+												PINTBasicExpression thisLeft = ResolveAsExpressionElement(element, thisLog, thisLine);
+												if (thisLeft != null) {		
+													if (ExpectedKeyword(elements, "=", element, thisLog, thisLine)) {
+														PINTBasicExpression thisRight = null;
+														
+														if (elements.Length > 3){
+															thisRight = ExpectedArithmeticExpression (elements, thisLog, thisLine);
+														} else {
+															i++;
+															if (i+1 <= elements.Length) {	
+																element = elements[i].ToUpper();
+																thisRight = ResolveAsExpressionElement(element, thisLog, thisLine);
+															} else {
+																WriteError(thisLog, thisLine, "expected expession in assignment statement");
+															}
+														}
+														
+														if (thisRight != null) {
+															AssignmentExpression thisAssignmentExpression = new AssignmentExpression(thisLeft, thisRight);
+															returnList.Add(new PINTBasicAssignment(thisLine, thisAssignmentExpression));
+															canContinue = false;
+														} else {
+															WriteError(thisLog, thisLine, "expected expession in assignment statement");
+														}												
+													} 											
+												}																				
+											}
 											break;
 									}
 								}
