@@ -1,23 +1,30 @@
 using System;
 using System.Collections;
-using PINTCompiler.Utilities;
 //****************************************
-// PINTBasicBackdrop
+// PINTRoomEntry
 // 2010 trodoss
 //See end of file for terms of use.  
 //***************************************
-namespace PINTCompiler.PINTBasic {
-	public enum ArithmeticOperator : int {Add = 0, Subtract = 1, Multiply = 2, Divide = 3};
+namespace PINTCompiler.Assembly {
+	public enum MathType : int {Add = 0, Sub = 1, Mul = 2, Div = 3, VAdd = 4, VSub = 5, VMul = 6, VDiv = 7, Undefined = -1}
+	
+	public class VariableMath : PINTCommand {
+		public int VariableID;
+		public MathType Type;
+		public int NewValue;
 
-	public class ArithmeticExpression : BinaryExpression {
-		public ArithmeticOperator Operator;
-		
-		public ArithmeticExpression(PINTBasicExpression left, PINTBasicExpression right, ArithmeticOperator op) {;
-			this.Left = left;
-			this.Right = right;
-			this.Operator = op;
+		public VariableMath() {
+			this.Opcode = 3;
+			this.Type = MathType.Add;
 		}
-				
+		
+		public VariableMath(int variableID, int newValue, MathType type) {
+			this.Opcode = 3;
+			this.Type = type;
+			this.VariableID = variableID;
+			this.NewValue = newValue;
+		}
+		
 	}
 }
 /*

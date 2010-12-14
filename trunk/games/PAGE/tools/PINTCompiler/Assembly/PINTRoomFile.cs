@@ -119,6 +119,15 @@ namespace PINTCompiler.Assembly {
 								variableSet = null;
 								break;	
 								
+							case "VariableMath":
+								VariableMath variableMath = (VariableMath)thisCommand;
+								binaryWriter.Write(variableMath.Opcode);
+								binaryWriter.Write((byte)variableMath.VariableID);	
+								binaryWriter.Write((byte)Convert.ToInt32(variableMath.Type));								
+								binaryWriter.Write((byte)variableMath.NewValue); 
+								variableMath = null;
+								break;									
+								
 							case "VariableTest":
 								VariableTest variableTest = (VariableTest)thisCommand;
 								binaryWriter.Write(variableTest.Opcode);

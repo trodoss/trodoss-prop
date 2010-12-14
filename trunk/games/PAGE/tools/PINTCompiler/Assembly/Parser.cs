@@ -65,6 +65,16 @@ namespace PINTCompiler.Assembly {
 			}			
 		}		
 
+		private static MathType ResolveAsMathType(CompilationLog thisLog, SourceLine thisLine, string thisValue) {
+			try {
+				
+				MathType returnType = (MathType) Enum.Parse(typeof(MathType), thisValue, true);
+				return returnType;
+			} catch {
+				WriteError(thisLog, thisLine, "unable to resolve '"+thisValue+"' as a valid math type");
+				return MathType.Undefined;
+			}			
+		}		
 		
 		public static PINTRoomEntry Parse(int roomID, SourceLineList lines, CompilationLog thisLog) {
 			PINTRoomEntry thisRoom = new PINTRoomEntry(roomID, thisLog);
@@ -231,6 +241,38 @@ namespace PINTCompiler.Assembly {
 										WriteError(thisLog, thisLine, "variable identifier expected in variable set declaration");
 									}
 								break;
+								
+								case "VARIABLE_MATH":
+									if (i+1 < elements.Length) {
+										i++;
+										string variableIDText = elements[i].ToUpper();
+										int variableID = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, variableIDText);
+
+										if (i+1 < elements.Length) {
+											i++;
+											string variableSetTypeText = elements[i].ToUpper();
+											MathType mathType = ResolveAsMathType(thisLog, thisLine, variableSetTypeText);
+										
+											if (i+1 < elements.Length) {
+												i++;
+												string variableValueText = elements[i].ToUpper();
+												int variableValue = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, variableValueText);
+												
+												VariableMath thisVariableMath = new VariableMath(variableID, variableValue, mathType);
+												if (thisLabel != "") thisVariableMath.Label = thisLabel;
+												thisVariableMath.Source = thisLine;
+												thisRoom.Commands.Add(thisVariableMath);
+												thisVariableMath = null;
+											} else {
+												WriteError(thisLog, thisLine, "variable value expected in variable math declaration");
+											}
+										} else {
+											WriteError(thisLog, thisLine, "variable math type expected in variable math declaration");
+										}
+									} else {
+										WriteError(thisLog, thisLine, "variable identifier expected in variable math declaration");
+									}
+								break;								
 								
 								case "VARIABLE_TEST":
 									if (i+1 < elements.Length) {

@@ -7,15 +7,12 @@ using PINTCompiler.Utilities;
 //See end of file for terms of use.  
 //***************************************
 namespace PINTCompiler.PINTBasic {
-	public enum ArithmeticOperator : int {Add = 0, Subtract = 1, Multiply = 2, Divide = 3};
-
-	public class ArithmeticExpression : BinaryExpression {
-		public ArithmeticOperator Operator;
+	public class PINTBasicAssignment : PINTBasicStatement {
+		public AssignmentExpression Assignment;
 		
-		public ArithmeticExpression(PINTBasicExpression left, PINTBasicExpression right, ArithmeticOperator op) {;
-			this.Left = left;
-			this.Right = right;
-			this.Operator = op;
+		public PINTBasicAssignment(SourceLine sourceLine, AssignmentExpression assignment) {
+			this.Source = sourceLine;
+			this.Assignment = assignment;
 		}
 				
 	}

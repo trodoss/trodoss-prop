@@ -193,7 +193,193 @@ namespace PINTCompiler.PINTBasic {
 					
 				case "PINTBasicWhile":
 					break;
+					
+				case "PINTBasicAssignment":
+					PINTBasicAssignment thisAssignment = (PINTBasicAssignment) thisStatement;
+					string[] statements = GenerateVariableStatement(thisAssignment.Assignment);
+					WriteLine(statements[0], thisAssignment.Source);
+					if (statements[1] != null) WriteLine(statements[1]);
+					thisAssignment = null;
+					break;					
 			}
+		}
+		
+		private string[] GenerateVariableStatement(AssignmentExpression thisExpression) {
+			string[] returnString = new string[2];
+			RoomVariableExpression roomVariableExpression;
+			GlobalVariableExpression globalVariableExpression;
+			ConstantExpression constantExpression;
+			LiteralExpression literalExpression;
+			ArithmeticExpression arithmeticExpression;
+			
+			string leftExpression = "";
+			int leftExpressionID = -1;
+			
+			switch (thisExpression.Left.GetType().Name) {
+				case "RoomVariableExpression":
+					roomVariableExpression = (RoomVariableExpression) thisExpression.Left;
+					leftExpression += (roomVariableExpression.ID + 8);
+					leftExpressionID = roomVariableExpression.ID + 8;
+					roomVariableExpression = null;
+					break;
+					
+				case "GlobalVariableExpression":
+					globalVariableExpression = (GlobalVariableExpression) thisExpression.Left;
+					leftExpression += globalVariableExpression.ID;
+					leftExpressionID = globalVariableExpression.ID;
+					globalVariableExpression = null;
+					break;	
+			}			
+			
+			returnString[0] = "VARIABLE_SET " + leftExpression + " ";
+			returnString[1] = null;
+			
+			//looking at the right expression, we can determine what type of statement the assignment will become
+			switch (thisExpression.Right.GetType().Name) {
+				case "ArithmeticExpression":
+					arithmeticExpression = (ArithmeticExpression) thisExpression.Right;
+					
+					string leftSubExpression = "";
+					string rightSubExpression = "";
+					bool leftSubIsVariable = false;
+					bool rightSubIsVariable = false;
+					int leftSubExpressionID = -1;
+					switch (arithmeticExpression.Left.GetType().Name) {
+						case "RoomVariableExpression":
+							roomVariableExpression = (RoomVariableExpression) arithmeticExpression.Left;
+							leftSubExpression += (roomVariableExpression.ID + 8) + " ";
+							leftSubExpressionID = (roomVariableExpression.ID + 8);
+							roomVariableExpression = null;
+							leftSubIsVariable = true;
+							break;
+							
+						case "GlobalVariableExpression":
+							globalVariableExpression = (GlobalVariableExpression) arithmeticExpression.Left;
+							leftSubExpression += globalVariableExpression.ID + " ";
+							leftSubExpressionID = globalVariableExpression.ID; 
+							globalVariableExpression = null;
+							leftSubIsVariable = true;
+							break;		
+
+						case "ConstantExpression":
+							constantExpression = (ConstantExpression) arithmeticExpression.Left;
+							leftSubExpression += thisApplication.Constants.FindByID(constantExpression.ID).Name + " ";
+							constantExpression = null;
+							break;
+							
+						case "LiteralExpression":
+							literalExpression = (LiteralExpression) arithmeticExpression.Left;
+							leftSubExpression += literalExpression.Value + " ";
+							literalExpression = null;
+							break;				
+					}
+
+					switch (arithmeticExpression.Right.GetType().Name) {
+						case "RoomVariableExpression":
+							roomVariableExpression = (RoomVariableExpression) arithmeticExpression.Right;
+							rightSubExpression += (roomVariableExpression.ID + 8);
+							roomVariableExpression = null;
+							rightSubIsVariable = true;
+							break;
+							
+						case "GlobalVariableExpression":
+							globalVariableExpression = (GlobalVariableExpression) arithmeticExpression.Right;
+							rightSubExpression += globalVariableExpression.ID ;
+							globalVariableExpression = null;
+							rightSubIsVariable = true;
+							break;		
+
+						case "ConstantExpression":
+							constantExpression = (ConstantExpression) arithmeticExpression.Right;
+							rightSubExpression += thisApplication.Constants.FindByID(constantExpression.ID).Name ;
+							constantExpression = null;
+							break;
+							
+						case "LiteralExpression":
+							literalExpression = (LiteralExpression) arithmeticExpression.Right;
+							rightSubExpression += literalExpression.Value;
+							literalExpression = null;
+							break;				
+					}	
+
+					string operatorValue = "";
+					switch (arithmeticExpression.Operator) {
+						case ArithmeticOperator.Add:
+							operatorValue += "ADD";
+							break;	
+
+						case ArithmeticOperator.Subtract:
+							operatorValue += "SUB";
+							break;	
+
+						case ArithmeticOperator.Multiply:
+							operatorValue += "MUL";
+							break;	
+
+						case ArithmeticOperator.Divide:
+							operatorValue += "DIV";
+							break;								
+					}
+					
+					//determine: if the left is the same as the outer left, then only an 'math' statement is necessary
+					//if the left is different, then a set + math will need to be generated
+					if (leftExpressionID == leftSubExpressionID) {
+						returnString[0] = "VARIABLE_MATH " + leftExpression + " ";
+						
+						//finish out the "set" statement, and build the "math" statement
+						if (rightSubIsVariable) {
+							returnString[0] += "V" + operatorValue + " ";
+						} else {
+							returnString[0] +=  operatorValue + " ";
+						}	
+						returnString[0] += rightSubExpression;						
+					} else {
+						//finish out the "set" statement, and build the "math" statement
+						if (leftSubIsVariable) {
+							returnString[0] += "VARIABLE ";
+						} else {
+							returnString[0] += "VALUE ";
+						}
+						returnString[0] += leftSubExpression;
+						
+						//finish out the "set" statement, and build the "math" statement
+						returnString[1] = "VARIABLE_MATH " + leftExpression + " ";
+						if (rightSubIsVariable) {
+							returnString[1] += "V" + operatorValue + " ";
+						} else {
+							returnString[1] += operatorValue + " ";
+						}		
+						returnString[1] += rightSubExpression;						
+					}
+					break;
+					
+				case "RoomVariableExpression":
+					roomVariableExpression = (RoomVariableExpression) thisExpression.Right;
+					returnString[0] += "VARIABLE " + (roomVariableExpression.ID + 8) ;
+					roomVariableExpression = null;
+					break;
+					
+				case "GlobalVariableExpression":
+					globalVariableExpression = (GlobalVariableExpression) thisExpression.Right;
+					returnString[0] += "VARIABLE " + globalVariableExpression.ID;
+					globalVariableExpression = null;
+					break;
+					
+				case "ConstantExpression":
+					constantExpression = (ConstantExpression) thisExpression.Right;
+					returnString[0] += "VALUE " + thisApplication.Constants.FindByID(constantExpression.ID).Name;
+					constantExpression = null;
+					break;
+					
+				case "LiteralExpression":
+					literalExpression = (LiteralExpression) thisExpression.Right;
+					returnString[0] += "VALUE " + literalExpression.Value ;
+					literalExpression = null;
+					break;
+				
+			}
+			
+			return returnString;
 		}
 		
 		private string GenerateComparisonStatement(ComparisonExpression thisExpression, string notEqualLabel) {
@@ -280,8 +466,7 @@ namespace PINTCompiler.PINTBasic {
 			returnString += operatorValue + rightExpression + notEqualLabel;
 			
 			return returnString;
-		}
-		
+		}	
 		
 		public SourceLineList Generate(PINTBasicApplication inApplication, CompilationLog thisLog) {
 			thisList = new SourceLineList();
