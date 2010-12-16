@@ -86,6 +86,159 @@ namespace PINTCompiler.PINTBasic {
 			return returnExpression;
 		}
 		
+		public MethodExpression ResolveAsMethodExpression(string thisElement, string[] elements, CompilationLog thisLog, SourceLine thisLine) {
+			MethodExpression returnExpression = null;
+			string[] methodElements = thisElement.Split('.');
+			
+			if (methodElements.Length > 0) {
+				switch (methodElements[0].ToUpper()) {
+					case "EGO":
+						if (methodElements.Length > 1) {
+							if (methodElements[1].ToUpper() == "LOAD") {
+								//EGO.Load(ix, y, facing)
+								if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+									int xValue = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+									if (xValue > -1) {
+										//look for X value
+										if (ExpectedKeyword(elements, ",", methodElements[1].ToUpper(), thisLog, thisLine)) {
+											//look for Y value
+											int yValue = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+											if (yValue > -1) {
+												if (ExpectedKeyword(elements, ",", methodElements[1].ToUpper(), thisLog, thisLine)) {
+													//look for facing value
+													int facingValue = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+													if (facingValue > -1) {
+														if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+															returnExpression = new EgoLoadExpression(xValue, yValue, facingValue);
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							} else {
+								WriteError(thisLog, thisLine, "Ego object does not contain the method '"+methodElements[1].ToUpper()+"'");
+							}
+						}
+						break;
+						
+					case "INVENTORY":
+						if (methodElements.Length > 1) {
+							switch (methodElements[1].ToUpper()) {
+								case "CONTAINS":
+									//INVENTORY.Contains(item#)
+									if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+										int containsItemID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (containsItemID > -1) {
+											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												returnExpression = new InventoryContainsExpression (containsItemID);
+											}
+										}
+									}
+									break;
+									
+								case "ADD":
+									//INVENTORY.Add(item#)
+									if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+										int addItemID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (addItemID > -1) {
+											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												returnExpression = new InventoryAddExpression (addItemID);
+											}
+										}
+
+									}									
+									break;
+									
+								case "REMOVE":
+									//INVENTORY.Remove(item#)
+									if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+										int removeItemID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (removeItemID > -1) {
+											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												returnExpression = new InventoryRemoveExpression (removeItemID);
+											}
+										}
+									}									
+									break;
+									
+								default:
+									WriteError(thisLog, thisLine, "Inventory object does not contain the method '"+methodElements[1].ToUpper()+"'");
+									break;
+							}
+						}					
+						break;
+						
+					case "ROOM":
+						if (methodElements.Length > 1) {
+							if (methodElements[1].ToUpper() == "LOAD") {
+								//Room.Load(room#)
+								if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+										int roomID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (roomID > -1) {
+											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												returnExpression = new RoomLoadExpression (roomID);
+											}
+										}
+								}
+
+							} else {
+								WriteError(thisLog, thisLine, "Room object does not contain the method '"+methodElements[1].ToUpper()+"'");
+							}
+						}					
+						break;
+						
+					default:
+						//check to see if this is a PIC or a Hotspot reference
+						PINTBasicPic thisPic = thisApplication.Pics.FindByName(methodElements[0].ToUpper());
+						if (thisPic != null) {
+							if (methodElements.Length > 1) {
+								switch (methodElements[1].ToUpper()) {
+									case "LOAD":
+										if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+											int picXValue = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+											if (picXValue > -1) {
+												//look for X value
+												if (ExpectedKeyword(elements, ",", methodElements[1].ToUpper(), thisLog, thisLine)) {
+													//look for Y value
+													int picYValue = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+													if (picYValue > -1) {
+														if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+															returnExpression = new PicLoadExpression(thisPic.ID, picXValue, picYValue);
+														}
+													}
+												}
+											}
+										}
+										break;
+										
+									case "HIDE":
+										if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												returnExpression = new PicHideExpression(thisPic.ID);
+											}
+										}
+										break;
+								}
+							} else {
+								WriteError(thisLog, thisLine, "Pic object reference does not contain a method");
+							}
+						} else {
+							//PINTBasicHotspot thisHotspot = thisRoom.Hotspots.FindByName(methodElements[0].ToUpper());
+							//if (thisHotspot != null) {
+							//} else {
+								WriteError(thisLog, thisLine, "Unable to resolve '"+methodElements[0].ToUpper()+"' as a valid object reference");
+							//}
+						}
+						thisPic = null;
+						break;
+				}
+			}
+			
+			return returnExpression;
+		}
+		
 		public int ResolveAsConstantOrNumber(string thisElement, CompilationLog thisLog, SourceLine thisLine) {
 			int returnValue = -1;
 			try {
@@ -99,7 +252,21 @@ namespace PINTCompiler.PINTBasic {
 				}
 			}
 			return returnValue;
+		}
 		
+		public int ExpectedConstantOrNumber(string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			int returnValue = -1;
+			string thisElement = "";
+			
+			i++;
+			if (i+1 <= elements.Length) {
+				thisElement = elements[i].ToUpper();
+				returnValue = ResolveAsConstantOrNumber(thisElement, thisLog, thisLine);
+			} else {
+				WriteError(thisLog, thisLine, "expected constant or number in '" + statementName + "' statement");
+			}
+			return returnValue;
+			
 		}
 		
 		public ComparisonExpression ExpectedComparisonExpression (string[] elements, CompilationLog thisLog, SourceLine thisLine) {
@@ -378,32 +545,41 @@ namespace PINTCompiler.PINTBasic {
 										default:										
 											//process assignments or method invocation, and only at the beginning of a line
 											if (i == 0 ) {
-												PINTBasicExpression thisLeft = ResolveAsExpressionElement(element, thisLog, thisLine);
-												if (thisLeft != null) {		
-													if (ExpectedKeyword(elements, "=", element, thisLog, thisLine)) {
-														PINTBasicExpression thisRight = null;
-														
-														if (elements.Length > 3){
-															thisRight = ExpectedArithmeticExpression (elements, thisLog, thisLine);
-														} else {
-															i++;
-															if (i+1 <= elements.Length) {	
-																element = elements[i].ToUpper();
-																thisRight = ResolveAsExpressionElement(element, thisLog, thisLine);
+												//indication of an object method invocation
+												if (element.IndexOf('.') > -1) {
+													MethodExpression thisMethod = ResolveAsMethodExpression(element, elements, thisLog, thisLine);
+													if (thisMethod != null) {
+														returnList.Add (new PINTBasicMethod(thisLine, thisMethod));
+														canContinue = false;
+													}
+												} else {	
+													PINTBasicExpression thisLeft = ResolveAsExpressionElement(element, thisLog, thisLine);
+													if (thisLeft != null) {		
+														if (ExpectedKeyword(elements, "=", element, thisLog, thisLine)) {
+															PINTBasicExpression thisRight = null;
+															
+															if (elements.Length > 3){
+																thisRight = ExpectedArithmeticExpression (elements, thisLog, thisLine);
+															} else {
+																i++;
+																if (i+1 <= elements.Length) {	
+																	element = elements[i].ToUpper();
+																	thisRight = ResolveAsExpressionElement(element, thisLog, thisLine);
+																} else {
+																	WriteError(thisLog, thisLine, "expected expession in assignment statement");
+																}
+															}
+															
+															if (thisRight != null) {
+																AssignmentExpression thisAssignmentExpression = new AssignmentExpression(thisLeft, thisRight);
+																returnList.Add(new PINTBasicAssignment(thisLine, thisAssignmentExpression));
+																canContinue = false;
 															} else {
 																WriteError(thisLog, thisLine, "expected expession in assignment statement");
-															}
-														}
-														
-														if (thisRight != null) {
-															AssignmentExpression thisAssignmentExpression = new AssignmentExpression(thisLeft, thisRight);
-															returnList.Add(new PINTBasicAssignment(thisLine, thisAssignmentExpression));
-															canContinue = false;
-														} else {
-															WriteError(thisLog, thisLine, "expected expession in assignment statement");
-														}												
-													} 											
-												}																				
+															}												
+														} 											
+													}																				
+												}
 											}
 											break;
 									}
