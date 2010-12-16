@@ -1,25 +1,23 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
+using PINTCompiler.Utilities;
 //****************************************
-// PINTBasicPicList
+// PINTBasicBackdrop
 // 2010 trodoss
 //See end of file for terms of use.  
 //***************************************
 namespace PINTCompiler.PINTBasic {
-	//*********************************************************************
-	// PINTBasicPicList Class
-	//*********************************************************************
-	public class PINTBasicPicList : List<PINTBasicPic> {
-	
-		public PINTBasicPic FindByName(string name) {
-			PINTBasicPic returnPic = this.Find(
-				delegate(PINTBasicPic thisPic) {
-					return thisPic.Name == name;
-				}
-			);
-			return returnPic;
+	public class EgoLoadExpression : MethodExpression {
+		public int X;
+		public int Y;
+		public int Facing;
+		
+		public EgoLoadExpression(int xValue, int yValue, int facingValue) {
+			this.X = xValue;
+			this.Y = yValue;
+			this.Facing = facingValue;
 		}
-			
+				
 	}
 }
 /*

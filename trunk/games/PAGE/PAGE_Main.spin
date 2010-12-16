@@ -94,7 +94,7 @@ VAR
   byte codeb[CODE_BUF_SIZE]                            'room code buffer
   byte varb[VAR_BUF_SIZE]                              'variable buffer size
 
-  long ioControl[2]     ' control address 
+  long ioControl[2]                                    'control address (fsrw)
   
   long code_ptr
   byte in_event                                        'indicates whether or not
@@ -121,10 +121,11 @@ OBJ
         
 PUB Main
 
-   player_x := 5
-   player_y := 55
+   player_x := 0
+   player_y := 0
    player_step := 0
    player_dir := DIR_SOUTH
+   player_visible := false
 
    focus := FOCUS_ROOM
 
@@ -134,11 +135,6 @@ PUB Main
    LoadRoom(0)
    
    tv.start(@displayb)
-
-   GetBackground(14,53,1)
-   DrawSprite(14,53,4,0)
-   
-   DrawPlayer
          
    key.start(26)
 
@@ -187,6 +183,22 @@ pub DrawPlayer | img, mirror
    player_step++
    if player_step > 1
       player_step := 0   
+
+pub DrawPic (pic_num, x, y) | ptr
+   ptr := @picinfo + ((pic_num - 3) * PIC_SIZE)
+   'store these values for later use
+   byte[ptr][PIC_X] := x
+   byte[ptr][PIC_Y] := y
+   byte[ptr][PIC_IMG] := pic_num
+   byte[ptr][PIC_VISIBLE] := true
+
+   GetBackground(byte[ptr][PIC_X], byte[ptr][PIC_Y], pic_num - 3)
+   DrawSprite(byte[ptr][PIC_X], byte[ptr][PIC_Y], pic_num, 0)
+
+pub HidePic(pic_num) | ptr
+    ptr := @picinfo + ((pic_num - 3) * PIC_SIZE)
+    RestoreBackground(byte[ptr][PIC_X], byte[ptr][PIC_Y], pic_num - 3)
+    byte[ptr][PIC_VISIBLE] := false
 
 pub plot(x,y,c)
    
@@ -287,42 +299,44 @@ pub DrawOptionsMenu
       
 pub HandleRoom
     if in_event
-         Interpret_Next_Command
+      Interpret_Next_Command
 
-    if(key.keystate($C2))       'Up Arrow
-      if CheckPlayerMove(player_x, player_y-2)  == 0
-         RestoreBackground(player_x,player_y,0)
-         player_y -= 2
-         player_dir := DIR_NORTH
-         DrawPlayer
+    else
+       if player_visible
+          if(key.keystate($C2))       'Up Arrow
+            if CheckPlayerMove(player_x, player_y-2)  == 0
+               RestoreBackground(player_x,player_y,0)
+               player_y -= 2
+               player_dir := DIR_NORTH
+               DrawPlayer
        
-    if(key.keystate($C3))       'Down Arrow
-      if CheckPlayerMove(player_x, player_y+2)  == 0
-         RestoreBackground(player_x,player_y,0)
-         player_y += 2
-         player_dir := DIR_SOUTH      
-         DrawPlayer
+          if(key.keystate($C3))       'Down Arrow
+            if CheckPlayerMove(player_x, player_y+2)  == 0
+               RestoreBackground(player_x,player_y,0)
+               player_y += 2
+               player_dir := DIR_SOUTH
+               DrawPlayer
             
-    if(key.keystate($C0))       'Left Arrow
-      if CheckPlayerMove(player_x - 2, player_y)  == 0
-         RestoreBackground(player_x,player_y,0)    
-         player_x -= 2
-         player_dir := DIR_EAST      
-         DrawPlayer
+          if(key.keystate($C0))       'Left Arrow
+            if CheckPlayerMove(player_x - 2, player_y)  == 0
+               RestoreBackground(player_x,player_y,0)
+               player_x -= 2
+               player_dir := DIR_EAST
+               DrawPlayer
       
-    if(key.keystate($C1))       'Right Arrow
-      if CheckPlayerMove(player_x + 2, player_y)  == 0
-         RestoreBackground(player_x,player_y,0)    
-         player_x += 2
-         player_dir := DIR_WEST      
-         DrawPlayer
+          if(key.keystate($C1))       'Right Arrow
+            if CheckPlayerMove(player_x + 2, player_y)  == 0
+               RestoreBackground(player_x,player_y,0)
+               player_x += 2
+               player_dir := DIR_WEST
+               DrawPlayer
 
-    if(key.keystate($0D))       'Enter key
-         select_x := 0
-         select_y := 86
-         select_val := 1
-         DrawOptionsMenu
-         focus := FOCUS_OPT_MENU
+       if(key.keystate($0D))       'Enter key
+            select_x := 0
+            select_y := 86
+            select_val := 1
+            DrawOptionsMenu
+            focus := FOCUS_OPT_MENU
       
 pub HandleOptionsMenu
    if(key.keystate($C2))       'Up Arrow
@@ -351,6 +365,33 @@ pub HandleOptionsMenu
 
    if(key.keystate($0D))       'Enter key
           Cls
+          case select_val
+             'TAKE selected
+             0:
+               Start_Event(on_take)
+
+             'USE selected
+             '1:
+
+             'TALK selected
+             2:
+               Start_Event(on_talk)
+
+             'LOOK selected
+             3:
+               Start_Event(on_look)
+
+             'GIVE selected
+             '4:
+
+             'LOAD selected
+             '5:
+
+             'QUIT selected
+             '6:
+
+             'SAVE selected
+             '7:
           focus := FOCUS_ROOM
           
 '***************** Room Load  *********************** 
@@ -462,8 +503,14 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
 '     CMD_ROOM_LOAD:
         
 '     CMD_HOT_TEST:
-'     CMD_PIC_LOAD:
-'     CMD_PIC_HIDE:
+
+     CMD_PIC_LOAD:
+        DrawPic (byte[code_ptr + 1], byte[code_ptr + 2], byte[code_ptr + 3])
+        code_ptr += 4
+
+     CMD_PIC_HIDE:
+        HidePic (byte[code_ptr + 2])
+        code_ptr += 4
 
      CMD_SAY:
         ShowSay(word[code_ptr + 2])
@@ -474,6 +521,8 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
         player_y   := byte[code_ptr + 2]
         player_dir := byte[code_ptr + 3]
         player_visible := true
+        'force the redraw of the player
+        DrawPlayer
 	code_ptr += 4
      
 '     CMD_INV_ADD:
@@ -505,8 +554,8 @@ pub LoadRoom(roomid) | i
    'load the PINT code
    sd.pread(@codeb, CODE_BUF_SIZE)
 
-  'start On_Load event
-  Start_Event(on_load)   
+   'start On_Load event
+   Start_Event(on_load)
          
 DAT
 

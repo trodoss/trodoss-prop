@@ -87,6 +87,7 @@ namespace PINTCompiler.PINTBasic {
 		
 		
 		private void WriteEvent(PINTBasicEvent thisEvent) {
+			WriteLine("'event " + thisEvent.Name);
 			//derive a label name from the event name
 			string lineLabel = thisEvent.Name + ": ";
 			int lineCount = 0;
@@ -128,6 +129,7 @@ namespace PINTCompiler.PINTBasic {
 				WriteLine("EVENT_END");	
 			} 
 			labelStack = null;
+			WriteLine("");
 		}
 		
 		private void WriteStatement(PINTBasicStatement thisStatement, bool hasNextLine) {
@@ -197,11 +199,56 @@ namespace PINTCompiler.PINTBasic {
 				case "PINTBasicAssignment":
 					PINTBasicAssignment thisAssignment = (PINTBasicAssignment) thisStatement;
 					string[] statements = GenerateVariableStatement(thisAssignment.Assignment);
-					WriteLine(statements[0], thisAssignment.Source);
+					outStatement += statements[0];
+					WriteLine(outStatement, thisAssignment.Source);
 					if (statements[1] != null) WriteLine(statements[1]);
 					thisAssignment = null;
-					break;					
+					break;		
+
+				case "PINTBasicMethod":
+					PINTBasicMethod thisMethod = (PINTBasicMethod) thisStatement;
+					outStatement += GenerateMethodStatement(thisMethod.Expression);
+					WriteLine(outStatement, thisMethod.Source);
+					thisMethod = null;
+					break;						
 			}
+		}
+		
+		private string GenerateMethodStatement (MethodExpression thisExpression) {
+			string returnString = "";
+			switch (thisExpression.GetType().Name) {
+				case "EgoLoadExpression":
+					EgoLoadExpression thisEgoLoad = (EgoLoadExpression) thisExpression;
+					returnString = "EGO_LOAD " + thisEgoLoad.X + " " + thisEgoLoad.Y + " " + thisEgoLoad.Facing;
+					thisEgoLoad = null;
+					break;
+				
+				case "InventoryAddExpression":
+					InventoryAddExpression thisInventoryAdd = (InventoryAddExpression) thisExpression;
+					returnString = "INVENTORY_ADD " + thisInventoryAdd.ItemID ;
+					thisInventoryAdd = null;
+					break;
+							
+				case "InventoryRemoveExpression":
+					InventoryRemoveExpression thisInventoryRemove = (InventoryRemoveExpression) thisExpression;
+					returnString = "INVENTORY_REMOVE " + thisInventoryRemove.ItemID ;
+					thisInventoryRemove = null;
+					break;	
+					
+				case "PicLoadExpression":
+					PicLoadExpression thisPicLoad = (PicLoadExpression) thisExpression;
+					returnString = "PIC_LOAD _PIC_" + thisPicLoad.ID + " " + thisPicLoad.X + " " + thisPicLoad.Y;
+					thisPicLoad = null;
+					break;
+
+				case "PicHideExpression":
+					PicHideExpression thisPicHide = (PicHideExpression) thisExpression;
+					returnString = "PIC_HIDE _PIC_" + thisPicHide.ID;
+					thisPicHide = null;				
+					break;			
+			}
+			
+			return returnString;
 		}
 		
 		private string[] GenerateVariableStatement(AssignmentExpression thisExpression) {
