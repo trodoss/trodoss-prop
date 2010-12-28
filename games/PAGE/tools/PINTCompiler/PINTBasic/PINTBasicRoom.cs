@@ -8,16 +8,20 @@ using System.Collections;
 namespace PINTCompiler.PINTBasic {
 	public class PINTBasicRoom : PINTBasicObject {
 		public PINTBasicBackdrop Backdrop;
+		public PINTBasicHotspotList Hotspots;
 		public PINTBasicByteList Variables;
 		public PINTBasicEventList Events;
 		
 		private int maxVariableID;
+		private int maxHotspotID;
 		
 		public PINTBasicRoom(int id, string name) {
 			this.ID = id;
 			this.Name = name;
 			maxVariableID = 0;
+			maxHotspotID = 0;
 			this.Variables = new PINTBasicByteList();
+			this.Hotspots = new PINTBasicHotspotList();
 			this.Events = new PINTBasicEventList();
 		}
 		
@@ -26,6 +30,17 @@ namespace PINTCompiler.PINTBasic {
 			maxVariableID++;
 			//if we have exceeded the number of global variables, then let the compiler know
 			if (maxVariableID > 8) {
+				return false;
+			} else {
+				return true;
+			}
+		}	
+
+		public bool AddHotspot(string hotspotName, int x, int y, int w, int h) {
+			this.Hotspots.Add(new PINTBasicHotspot(maxHotspotID, hotspotName, x, y, w, h));
+			maxHotspotID++;
+			//if we have exceeded the number of global variables, then let the compiler know
+			if (maxHotspotID > 4) {
 				return false;
 			} else {
 				return true;

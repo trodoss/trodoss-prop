@@ -48,18 +48,18 @@ CON _clkmode = xtal1 + pll16x
   CODE_BUF_SIZE  = 512
 
   'position in the event table of each event location
-  on_load     = 4
-  on_use      = 6
-  on_take     = 8
-  on_look     = 10
-  on_talk     = 12
-  on_give     = 14
-  on_hotspot1 = 16
-  on_hotspot2 = 18
-  on_hotspot3 = 20
-  on_hotspot4 = 22
+  on_load     = 0
+  on_use      = 2
+  on_take     = 4
+  on_look     = 6
+  on_talk     = 8
+  on_give     = 10
+  on_hotspot1 = 12
+  on_hotspot2 = 14
+  on_hotspot3 = 16
+  on_hotspot4 = 18
 
-  INDEX_HOTSPOT     = 24 'start of the hotspot data
+  INDEX_HOTSPOT     = 20 'start of the hotspot data
   
   HOTSPOT_SIZE  = 4
   HOTSPOT_X     = 0
@@ -95,12 +95,13 @@ VAR
   byte varb[VAR_BUF_SIZE]                              'variable buffer size
 
   long ioControl[2]                                    'control address (fsrw)
+  byte filenb[12]                                      'filename buffer
   
   long code_ptr
   byte in_event                                        'indicates whether or not
                                                        'we are currently interpreting
                                                        'an event
-  byte filler3
+  byte last_room
   byte filler4
                                                        
   byte player_x
@@ -120,18 +121,10 @@ OBJ
     sd   : "fsrwFemto"    
         
 PUB Main
-
-   player_x := 0
-   player_y := 0
-   player_step := 0
-   player_dir := DIR_SOUTH
-   player_visible := false
-
-   focus := FOCUS_ROOM
-
    sd.start(@ioControl)
    sd.mount(spiDO,spiClk,spiDI,spiCS)
 
+   last_room := 0
    LoadRoom(0)
    
    tv.start(@displayb)
@@ -152,7 +145,13 @@ PUB Main
       waitcnt(5_000_000 + cnt)
 
 
-pub DrawPlayer | img, mirror
+pub DrawPlayer | img, mirror, hot
+   '*****Debug Code******
+   'Cls
+   'DrawNumAt(4, 81, player_x)
+   'DrawNumAt(24, 81, player_y)
+   '*********************
+
    GetBackground(player_x,player_y,0)
    mirror := 0
    
@@ -171,18 +170,24 @@ pub DrawPlayer | img, mirror
        img := 2
        if player_step == 1
           img := 3
-       mirror := 1   
 
      DIR_WEST:
        img := 2
        if player_step == 1
-          img := 3      
+          img := 3
+       mirror := 1   
 
    DrawSprite(player_x,player_y,img,mirror)
 
    player_step++
    if player_step > 1
-      player_step := 0   
+      player_step := 0
+
+   'check to see if a hotspot has been triggered
+   repeat hot from 0 to 3
+      if CheckHotspot(hot) == true
+         Start_Event(on_hotspot1+(2*hot))
+         quit
 
 pub DrawPic (pic_num, x, y) | ptr
    ptr := @picinfo + ((pic_num - 3) * PIC_SIZE)
@@ -196,9 +201,13 @@ pub DrawPic (pic_num, x, y) | ptr
    DrawSprite(byte[ptr][PIC_X], byte[ptr][PIC_Y], pic_num, 0)
 
 pub HidePic(pic_num) | ptr
-    ptr := @picinfo + ((pic_num - 3) * PIC_SIZE)
-    RestoreBackground(byte[ptr][PIC_X], byte[ptr][PIC_Y], pic_num - 3)
-    byte[ptr][PIC_VISIBLE] := false
+   RestoreBackground(player_x, player_y, 0)
+
+   ptr := @picinfo + ((pic_num - 3) * PIC_SIZE)
+   RestoreBackground(byte[ptr][PIC_X], byte[ptr][PIC_Y], pic_num - 3)
+   byte[ptr][PIC_VISIBLE] := false
+
+   DrawPlayer
 
 pub plot(x,y,c)
    
@@ -225,8 +234,20 @@ pub Print(x,y,s,c)
   repeat while byte[s][0]
     DrawChar(x,y,byte[s][0]-32,c)
     s++
-    x+=4    
-   
+    x+=4
+
+PUB DrawNumAt (x, y, value) | i, pos
+        i := 1_000_000_000
+        pos := x
+        repeat 10
+           if value => i
+              DrawChar(pos+=4, y, value / i + 16, $AD)
+              value //= i
+              result~~
+           elseif result or i == 1
+              DrawChar(pos+=4, y, 16, $AD)
+           i /= 10
+
 pub DrawSprite(x,y,n,mirrored) | ptr,sx,sy
 '   ptr := @spr_info + (n * 128)
     ptr := @picb + (n*128)
@@ -321,14 +342,14 @@ pub HandleRoom
             if CheckPlayerMove(player_x - 2, player_y)  == 0
                RestoreBackground(player_x,player_y,0)
                player_x -= 2
-               player_dir := DIR_EAST
+               player_dir := DIR_WEST
                DrawPlayer
       
           if(key.keystate($C1))       'Right Arrow
             if CheckPlayerMove(player_x + 2, player_y)  == 0
                RestoreBackground(player_x,player_y,0)
                player_x += 2
-               player_dir := DIR_WEST
+               player_dir := DIR_EAST
                DrawPlayer
 
        if(key.keystate($0D))       'Enter key
@@ -339,6 +360,10 @@ pub HandleRoom
             focus := FOCUS_OPT_MENU
       
 pub HandleOptionsMenu
+   if(key.keystate(" "))       'Space key
+      Cls
+      focus := FOCUS_ROOM
+
    if(key.keystate($C2))       'Up Arrow
       if (select_y == 91)
           select_y := 86
@@ -371,7 +396,8 @@ pub HandleOptionsMenu
                Start_Event(on_take)
 
              'USE selected
-             '1:
+             1:
+               Print(4,82,string("ON USE"),$AD)
 
              'TALK selected
              2:
@@ -382,16 +408,21 @@ pub HandleOptionsMenu
                Start_Event(on_look)
 
              'GIVE selected
-             '4:
+             4:
+               Print(4,82,string("ON GIVE"),$AD)
 
              'LOAD selected
-             '5:
+             5:
+               Print(4,82,string("ON LOAD"),$AD)
 
              'QUIT selected
-             '6:
+             6:
+               Print(4,82,string("ON QUIT"),$AD)
 
              'SAVE selected
-             '7:
+             7:
+               Print(4,82,string("ON SAVE"),$AD)
+
           focus := FOCUS_ROOM
           
 '***************** Room Load  *********************** 
@@ -400,7 +431,7 @@ pub Start_Event (event_ptr) | ptr
 
    'only trigger event if there has been one specified
    if byte[ptr] > 0 
-      code_ptr := @codeb + byte[ptr]
+      code_ptr := @codeb + word[ptr]
       in_event := true
    
       'start interpreting commands
@@ -500,9 +531,15 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
      CMD_GOTO:
         code_ptr := @codeb + byte[code_ptr + 2]
         
-'     CMD_ROOM_LOAD:
+     CMD_ROOM_LOAD:
+         LoadRoom(word[code_ptr +2])
         
-'     CMD_HOT_TEST:
+     CMD_HOT_TEST:
+        met := CheckHotspot(byte[code_ptr + 2])
+        if met == true
+           code_ptr += 4
+        else
+           code_ptr := @codeb + byte[code_ptr + 3]
 
      CMD_PIC_LOAD:
         DrawPic (byte[code_ptr + 1], byte[code_ptr + 2], byte[code_ptr + 3])
@@ -532,6 +569,16 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
      CMD_END:
        in_event := false
 
+pub CheckHotspot (hot_id) | ptr, met
+   met := false
+   ptr:= @codeb + INDEX_HOTSPOT + (hot_id * HOTSPOT_SIZE)
+   if (player_x > byte[ptr][HOTSPOT_X])
+     if (player_x < (byte[ptr][HOTSPOT_X] + byte[ptr][HOTSPOT_W]))
+        if (player_y > byte[ptr][HOTSPOT_Y])
+           if (player_y < (byte[ptr][HOTSPOT_Y] + byte[ptr][HOTSPOT_H]))
+              met := true
+   return met
+
 pub ShowSay (text_ptr) | ptr
    ptr := @codeb + text_ptr
    CLS
@@ -543,10 +590,18 @@ pub HandleSay
       Cls
       focus := FOCUS_ROOM
 
-pub LoadRoom(roomid) | i
-   i:=sd.popen(string("000.rm"), "r")
+pub LoadRoom(roomid) | i, ptr
+   GetFileName(roomid)
+   i:=sd.popen(@filenb, "r")
+
    sd.pread(@displayb, BACKDROP_SIZE)
    Cls
+   'clear out local variables
+   bytefill(@varb+8,0, 8)
+
+   'store last room variable
+   ptr := @varb
+   byte[ptr+2] := last_room
 
    'load pic data
    sd.pread(@picb, 768)
@@ -554,9 +609,35 @@ pub LoadRoom(roomid) | i
    'load the PINT code
    sd.pread(@codeb, CODE_BUF_SIZE)
 
+   'initialize the player variables
+   player_x := 0
+   player_y := 0
+   player_step := 0
+   player_dir := DIR_SOUTH
+   player_visible := false
+
+   focus := FOCUS_ROOM
+   last_room := roomid
+
    'start On_Load event
    Start_Event(on_load)
-         
+
+pub GetFileName(value)| ptr, i
+  bytefill(@filenb, 0, 12)
+  ptr := @filenb
+
+  i := 1_000_000_000
+  repeat 10
+     if value => i
+        byte[ptr++] := value / i + "0"
+        value //= i
+        result~~
+     elseif result or i == 1
+        byte[ptr++] := "0"
+     i /= 10
+  byte[ptr++] := "."
+  byte[ptr++] := "R"
+  byte[ptr++] := "M"
 DAT
 
 '0 = black

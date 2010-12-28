@@ -8,12 +8,12 @@ using PINTCompiler.Utilities;
 //***************************************
 namespace PINTCompiler.PINTBasic {
 	public class PINTBasicIf : PINTBasicStatement {
-		public ComparisonExpression Condition;
+		public BinaryExpression Condition;
 		public PINTBasicStatementList Met;
 		public PINTBasicStatementList Else;
 		public bool HasElseClause;
 		
-		public PINTBasicIf(SourceLine sourceLine, ComparisonExpression condition) {
+		public PINTBasicIf(SourceLine sourceLine, BinaryExpression condition) {
 			this.Source = sourceLine;
 			this.Condition = condition;
 			this.HasElseClause = false;

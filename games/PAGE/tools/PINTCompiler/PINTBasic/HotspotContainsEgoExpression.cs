@@ -2,18 +2,16 @@ using System;
 using System.Collections;
 using PINTCompiler.Utilities;
 //****************************************
-// PINTBasicBackdrop
+// HotspotContainsEgoExpression
 // 2010 trodoss
 //See end of file for terms of use.  
 //***************************************
 namespace PINTCompiler.PINTBasic {
-	public class PINTBasicWhile : PINTBasicStatement {
-		public ComparisonExpression Condition;
-		public PINTBasicStatementList Met;
+	public class HotspotContainsEgoExpression : MethodExpression {
+		public int HotspotID;
 		
-		public PINTBasicWhile(SourceLine sourceLine, ComparisonExpression condition) {
-			this.Source = sourceLine;
-			this.Condition = condition;
+		public HotspotContainsEgoExpression(int hotspotID) {
+			this.HotspotID = hotspotID;
 		}
 				
 	}

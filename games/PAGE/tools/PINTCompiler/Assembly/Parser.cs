@@ -169,6 +169,46 @@ namespace PINTCompiler.Assembly {
 									}
 								break;
 								
+								case "HOTSPOT":
+									if (i+1 < elements.Length) {
+										i++;
+										string hotspotIDText = elements[i].ToUpper();
+										int hotspotID = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, hotspotIDText);
+										if (i+1 < elements.Length) {
+											i++;
+											string hotspotXText = elements[i].ToUpper();
+											int hotspotX = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, hotspotXText);
+											if (i+1 < elements.Length) {
+												i++;
+												string hotspotYText = elements[i].ToUpper();
+												int hotspotY = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, hotspotYText);
+												if (i+1 < elements.Length) {
+													i++;
+													string hotspotWText = elements[i].ToUpper();
+													int hotspotW = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, hotspotWText);
+													if (i+1 < elements.Length) {
+														i++;
+														string hotspotHText = elements[i].ToUpper();
+														int hotspotH = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, hotspotHText);
+														
+														thisRoom.Hotspots.Add(new PINTHotspotEntry(hotspotID, hotspotX, hotspotY, hotspotW, hotspotH));
+													} else {
+														WriteError(thisLog, thisLine, "height value expected in hotspot declaration");
+													}
+												}else {
+													WriteError(thisLog, thisLine, "width value expected in hotspot declaration");
+												}
+											} else {
+												WriteError(thisLog, thisLine, "y value expected in hotspot declaration");
+											}
+										}else{
+											WriteError(thisLog, thisLine, "x value expected in hotspot declaration");
+										}
+									} else {
+										WriteError(thisLog, thisLine, "hotspot identifier expected in hotspot declaration");
+									}
+								break;
+								
 								case "PIC":
 									if (i+1 < elements.Length) {
 										i++;
