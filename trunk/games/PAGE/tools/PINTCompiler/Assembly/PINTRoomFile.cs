@@ -83,9 +83,6 @@ namespace PINTCompiler.Assembly {
 					//the code is allocate 512 bytes of space
 					int bytesLeft = 512;
 					
-					binaryWriter.Write((int)thisRoom.Backdrop.BackdropID);
-					bytesLeft -= 4;
-					
 					foreach (int thisEntry in thisRoom.EventTableEntries) {
 						binaryWriter.Write((short)thisEntry);
 						bytesLeft -=2;

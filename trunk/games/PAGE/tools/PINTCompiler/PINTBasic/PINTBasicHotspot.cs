@@ -1,29 +1,26 @@
 using System;
 using System.Collections;
 //****************************************
-// PINTHotspotEntry
+// PINTBasicHotspot
 // 2010 trodoss
 //See end of file for terms of use.  
 //***************************************
-namespace PINTCompiler.Assembly {
-	public class PINTHotspotEntry {
-		public int ID;
+namespace PINTCompiler.PINTBasic {
+	public class PINTBasicHotspot : PINTBasicObject {
 		public int X;
 		public int Y;
 		public int Width;
 		public int Height;
-
-		public PINTHotspotEntry() {
-		}
-
-		public PINTHotspotEntry(int id, int x, int y, int width, int height) {
+		
+		public PINTBasicHotspot(int id, string name, int x, int y, int w, int h) {
 			this.ID = id;
+			this.Name = name;
 			this.X = x;
 			this.Y = y;
-			this.Width = width;
-			this.Height = height;
+			this.Width = w;
+			this.Height = h;
 		}
-		
+				
 	}
 }
 /*

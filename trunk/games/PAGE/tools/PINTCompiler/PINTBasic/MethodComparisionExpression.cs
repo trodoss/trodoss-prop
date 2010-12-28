@@ -1,29 +1,20 @@
 using System;
 using System.Collections;
+using PINTCompiler.Utilities;
 //****************************************
-// PINTHotspotEntry
+// PINTBasicBackdrop
 // 2010 trodoss
 //See end of file for terms of use.  
 //***************************************
-namespace PINTCompiler.Assembly {
-	public class PINTHotspotEntry {
-		public int ID;
-		public int X;
-		public int Y;
-		public int Width;
-		public int Height;
+namespace PINTCompiler.PINTBasic {
 
-		public PINTHotspotEntry() {
-		}
+	public class MethodComparisonExpression : BinaryExpression {
 
-		public PINTHotspotEntry(int id, int x, int y, int width, int height) {
-			this.ID = id;
-			this.X = x;
-			this.Y = y;
-			this.Width = width;
-			this.Height = height;
+		public MethodComparisonExpression(MethodExpression left, PINTBasicExpression right) {;
+			this.Left = left;
+			this.Right = right;
 		}
-		
+				
 	}
 }
 /*

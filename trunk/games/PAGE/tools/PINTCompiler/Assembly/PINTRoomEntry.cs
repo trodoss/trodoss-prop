@@ -35,7 +35,7 @@ namespace PINTCompiler.Assembly {
 			this.EventTableEntries = new int[10];
 			
 			//assume the static header size
-			this.Offset = 40;
+			this.Offset = 36;
 		}
 		
 		public int FindCommandLocationByLabel(string label) {

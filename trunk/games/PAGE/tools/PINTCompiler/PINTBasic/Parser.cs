@@ -225,11 +225,23 @@ namespace PINTCompiler.PINTBasic {
 								WriteError(thisLog, thisLine, "Pic object reference does not contain a method");
 							}
 						} else {
-							//PINTBasicHotspot thisHotspot = thisRoom.Hotspots.FindByName(methodElements[0].ToUpper());
-							//if (thisHotspot != null) {
-							//} else {
+							PINTBasicHotspot thisHotspot = thisRoom.Hotspots.FindByName(methodElements[0].ToUpper());
+							if (thisHotspot != null) {
+								if (methodElements.Length > 1) {
+									//Hotspot.ContainsEgo() method
+									if (methodElements[1].ToUpper() == "CONTAINSEGO") {		
+										if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												returnExpression = new HotspotContainsEgoExpression(thisHotspot.ID);
+											}
+										}
+									} else {
+										WriteError(thisLog, thisLine, "Hotspot object does not contain the method '"+methodElements[1].ToUpper()+"'");
+									}
+								}
+							} else {
 								WriteError(thisLog, thisLine, "Unable to resolve '"+methodElements[0].ToUpper()+"' as a valid object reference");
-							//}
+							}
 						}
 						thisPic = null;
 						break;
@@ -332,6 +344,26 @@ namespace PINTCompiler.PINTBasic {
 			return returnExpression;
 		}
 		
+		public MethodComparisonExpression ExpectedMethodComparisonExpression(string[] elements, CompilationLog thisLog, SourceLine thisLine) {
+			MethodComparisonExpression returnExpression  = null;
+			string thisElement = "";
+			
+			i++;
+			if (i+1 <= elements.Length) {
+				thisElement = elements[i];
+				MethodExpression leftExpression = ResolveAsMethodExpression(thisElement, elements, thisLog, thisLine);
+				if (leftExpression != null) {	
+					//for now, force a value for 'right'
+					returnExpression = new MethodComparisonExpression(leftExpression, new LiteralExpression(1));	
+				} else {
+					WriteError(thisLog, thisLine, "expected method expression");
+				}
+			} else {
+				WriteError(thisLog, thisLine, "expected method expression");
+			}
+			return returnExpression;
+		}
+		
 		public PINTBasicExpression ExpectedArithmeticExpression (string[] elements, CompilationLog thisLog, SourceLine thisLine) {
 			PINTBasicExpression returnExpression  = null;
 			string thisElement = "";
@@ -388,16 +420,26 @@ namespace PINTCompiler.PINTBasic {
 			return returnExpression;
 		}		
 		
-		public string ExpectedObjectAssignment (string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
-			string returnAssignment = null;
-			if (ExpectedKeyword(elements, "(", statementName, thisLog, thisLine)) {
-				i++;
-				if (i+1 <= elements.Length) {
-					returnAssignment = elements[i];
-					//check for the close parenthesis
-					ExpectedKeyword(elements, ")", statementName, thisLog, thisLine);
-				} else {
-					WriteError(thisLog, thisLine, "expected value in "+statementName+" statement");
+		//overload, for single parameter objects
+		public string[] ExpectedObjectAssignment (string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			return ExpectedObjectAssignment(elements, statementName, 1, thisLog, thisLine);
+		}
+		
+		public string[] ExpectedObjectAssignment (string[] elements, string statementName, int numberOfParameters, CompilationLog thisLog, SourceLine thisLine) {
+			string[] returnAssignment = new string[4];
+			if (ExpectedKeyword(elements, "(", statementName, thisLog, thisLine)) {		
+				for  (int count = 0; count < numberOfParameters; count++) {
+					i++;
+					if (i+1 <= elements.Length) {
+						returnAssignment[count] = elements[i];
+						if ((count+1) < numberOfParameters) {
+							//check for the close parenthesis
+							ExpectedKeyword(elements, ",", statementName, thisLog, thisLine);
+						} else {
+							//check for the close parenthesis
+							ExpectedKeyword(elements, ")", statementName, thisLog, thisLine);
+						}
+					}
 				}
 			}
 			return returnAssignment;
@@ -447,7 +489,8 @@ namespace PINTCompiler.PINTBasic {
 				returnObjectName = elements[i].ToUpper();
 				switch (returnObjectName) {
 					case "BACKDROP":
-					case "BYTE":										
+					case "BYTE":	
+					case "HOTSPOT":
 					case "PIC":
 						break;
 															
@@ -503,26 +546,22 @@ namespace PINTCompiler.PINTBasic {
 											
 										case "IF":
 											if (ExpectedKeyword(elements, "(", element, thisLog, thisLine)) {
-												ComparisonExpression thisIfCondition =  ExpectedComparisonExpression (elements, thisLog, thisLine);
+												ComparisonExpression thisIfCondition = null;
+												MethodComparisonExpression thisMethodIfCondition = null;
+												if (elements[i+1].IndexOf('.') > -1) {
+													thisMethodIfCondition = ExpectedMethodComparisonExpression(elements, thisLog, thisLine);
+												} else {
+													thisIfCondition = ExpectedComparisonExpression (elements, thisLog, thisLine);
+												}
 												if (ExpectedKeyword(elements, ")", element, thisLog, thisLine)) {
 													if (ExpectedKeyword(elements, "THEN", element, thisLog, thisLine)) {
-														PINTBasicIf thisIf = new PINTBasicIf(thisLine, thisIfCondition);
+														PINTBasicIf thisIf = null;
+														if (thisIfCondition != null) thisIf = new PINTBasicIf(thisLine, thisIfCondition);
+														if (thisMethodIfCondition != null) thisIf = new PINTBasicIf(thisLine, thisMethodIfCondition);
 														thisIf.Met = ParseStatements(thisLog, lines, "IF");
 														returnList.Add(thisIf);
 														thisIf = null;
 													}
-												}
-											}
-											break;
-											
-										case "WHILE":
-											if (ExpectedKeyword(elements, "(", element, thisLog, thisLine)) {
-												ComparisonExpression thisWhileCondition =  ExpectedComparisonExpression (elements, thisLog, thisLine);
-												if (ExpectedKeyword(elements, ")", element, thisLog, thisLine)) {
-													PINTBasicWhile thisWhile = new PINTBasicWhile(thisLine, thisWhileCondition);
-													thisWhile.Met = ParseStatements(thisLog, lines, "WHILE");
-													returnList.Add(thisWhile);
-													thisWhile = null;
 												}
 											}
 											break;
@@ -653,15 +692,15 @@ namespace PINTCompiler.PINTBasic {
 										if (dimIdentifier != null) {
 											if (ExpectedKeyword(elements, "AS", element, thisLog, thisLine)) {
 												string thisObjectName = ExpectedObject(elements, element, thisLog, thisLine);											
-												string fileName = null;
+												string[] parameters = null;
 												switch (thisObjectName) {
 												
 													case "BACKDROP":
-														fileName = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
-														if (fileName != null) {
+														parameters = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
+														if (parameters[0] != null) {
 															if (thisRoom != null) {
 																if (thisRoom.Backdrop == null) {
-																	thisRoom.Backdrop = new PINTBasicBackdrop(0, dimIdentifier, fileName);
+																	thisRoom.Backdrop = new PINTBasicBackdrop(0, dimIdentifier, parameters[0]);
 																} else {
 																	WriteError(thisLog, thisLine, "backdrop resources cannot be defined more than once in a Room object");
 																}
@@ -670,11 +709,22 @@ namespace PINTCompiler.PINTBasic {
 															}
 														}
 														break;
+														
+													case "HOTSPOT":
+														parameters = ExpectedObjectAssignment(elements, element, 4, thisLog, thisLine);
+														if (parameters[0] != null) {
+															if (thisRoom != null) {
+																if (!thisRoom.AddHotspot(dimIdentifier, Convert.ToInt32(parameters[0]), Convert.ToInt32(parameters[1]), Convert.ToInt32(parameters[2]), Convert.ToInt32(parameters[3]))) WriteError(thisLog, thisLine, "maximum number Hotspot object variables exceeded.");
+															} else {
+																WriteError(thisLog, thisLine, "hotspot resources cannot be defined outside a Room object");
+															}
+														}
+														break;														
 		
 													case "PIC":
-														fileName = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
-														if (fileName != null) {
-															if (!thisApplication.AddPic(dimIdentifier, fileName)) WriteError(thisLog, thisLine, "maximum number of Pic resources exceeded.");
+														parameters = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
+														if (parameters[0] != null) {
+															if (!thisApplication.AddPic(dimIdentifier, parameters[0])) WriteError(thisLog, thisLine, "maximum number of Pic resources exceeded.");
 														}
 														break;
 														
