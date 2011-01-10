@@ -1,16 +1,90 @@
 {{
 PAGE interpereter 
-2010 trodoss
+
+2011 - trodoss, roadster
+
+   Special Thanks to:
+    roadster, Oldbitcollector, Doug Dingus, Potatohead, Ariba, Baggers, lft,
+    Unsoundcode, Chris Savage (SavageCircuits.com)
+
+Version History:
+- 0.1 - trodoss:  initial release
+- 0.2 - roadster: added configuration options
+         trodoss: added item/inventory handling
+
 
 See the bottom of the code for terms of use.
 }}
-CON _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+CON
+
+'** uncomment the section below that corresponds to your configuration **
+
+'** additional configuration is necessary in the OBJ section, selecting
+'   the input device.
+
+'Proto / Demo board
+  _clkmode = xtal1 + pll16x
+  _xinfreq = 5_000_000
 
   spiDO     = 0
   spiClk    = 1
   spiDI     = 2
-  spiCS     = 3    
+  spiCS     = 3
+
+  Keybd     = 26    
+  Tv_base   = 12
+  Sound     = 10    
+
+
+{
+' El Jugador
+  _clkmode = xtal1 + pll16x
+  _xinfreq = 5_000_000
+
+  spiDO     = 0
+  spiClk    = 1
+  spiDI     = 2
+  spiCS     = 3
+
+  Keybd     = 23    'See object changes below for game pad
+  Tv_base   = 12
+  Sound     = 11
+}
+{
+'Hydra
+  _clkmode = xtal1 + pll8x
+  _xinfreq = 10_000_000
+
+  spiDO     = 16
+  spiClk    = 17
+  spiDI     = 18
+  spiCS     = 19
+
+  Keybd     = 15    
+  Tv_base   = 24
+  Sound     = 7
+}
+{
+'Drake Blade
+  _clkmode = xtal1 + pll16x
+  _xinfreq = 5_000_000
+
+  spiDO     = 12
+  spiClk    = 13
+  spiDI     = 14
+  spiCS     = 15
+
+  Keybd     = 26    
+  Tv_base   = 16
+  Sound     = 24
+ }
+
+
+'** end CON configuration ***
+
+  _VCFG = ((%10111 | (Tv_base & 4 == 4) & %1000) << 26) | (Tv_base & %111000) << 6 | %111 << ((Tv_base & 4 == 4) & 4)
+  _DIRA = %111 << ((Tv_base & 4 == 4) & 4) << ((Tv_base / 8) * 8)
+
 
   HORIZONTAL_PIXELS = 80 
   VERTICAL_PIXELS   = 96
@@ -38,10 +112,18 @@ CON _clkmode = xtal1 + pll16x
   BACK_SIZE   = 128
   BACK_COUNT  = 3 '(ego + 2 PIC)
 
+  'pic buffer size
   PIC_BUF_SIZE    = 128
   PIC_BUF_COUNT   = 6
 
+  'variable buffer size
   VAR_BUF_SIZE    = 16
+
+  'item buffer size (4 bytes, 8 entries)
+  ITEM_BUF_SIZE   = 32
+
+  'inventory buffer size
+  INVENTORY_BUF_SIZE = 8
 
   BACKDROP_SIZE  = 6400
   
@@ -82,8 +164,7 @@ CON _clkmode = xtal1 + pll16x
   CMD_INV_TEST  = 82
   CMD_INV_REM   = 84
   CMD_END       = 255
-  
-
+ 
 VAR
   byte displayb[HORIZONTAL_PIXELS * VERTICAL_PIXELS]   'allocate display buffer in RAM
   byte backb[BACK_SIZE * BACK_COUNT]                   'back buffer (for ego/pic)
@@ -93,6 +174,8 @@ VAR
 
   byte codeb[CODE_BUF_SIZE]                            'room code buffer
   byte varb[VAR_BUF_SIZE]                              'variable buffer size
+  byte itemb[ITEM_BUF_SIZE]                            'item buffer size
+  byte invb[INVENTORY_BUF_SIZE]                        'inventory buffer size
 
   long ioControl[2]                                    'control address (fsrw)
   byte filenb[12]                                      'filename buffer
@@ -101,8 +184,9 @@ VAR
   byte in_event                                        'indicates whether or not
                                                        'we are currently interpreting
                                                        'an event
-  byte last_room
-  byte filler4
+
+  byte last_room                                       'store the last room visited
+  byte inv_cnt                                         'current inventory count
                                                        
   byte player_x
   byte player_y
@@ -114,22 +198,34 @@ VAR
   byte select_x
   byte select_y
   byte select_val
+
+  byte sub_action                                      'sub action on the menu
       
 OBJ
     tv   : "mashed_potatos_PAGE"
-    key  : "Combokeyboard"
+
+    'use this for keyboard
+    key  : "migs_keyboard"
+
+    'use the for game pad
+    'key   : "migs_nes"
+
     sd   : "fsrwFemto"    
         
 PUB Main
    sd.start(@ioControl)
    sd.mount(spiDO,spiClk,spiDI,spiCS)
 
+   inv_cnt := 0
+   'initially load item data
+   LoadItems
+
    last_room := 0
    LoadRoom(0)
    
-   tv.start(@displayb)
+   tv.start(@displayb, _VCFG, _DIRA)
          
-   key.start(26)
+   key.init(Keybd)
 
    repeat
       case focus
@@ -138,6 +234,9 @@ PUB Main
 
          FOCUS_OPT_MENU:
            HandleOptionsMenu
+
+         FOCUS_ITEM_MENU:
+           HandleInventoryMenu
 
          FOCUS_SAY:
            HandleSay
@@ -317,42 +416,71 @@ pub DrawOptionsMenu
    Print(64,91,string("QUIT"),$AD)
 
    DrawChar(select_x,select_y,$1E,$AD)
-      
+
+pub DrawInventoryMenu(action) | curr_x, curr_y, ptr, i
+   sub_action := action
+   CLS
+   if (sub_action == on_use)
+       Print(0,81,string("USE"),$AD)
+   else
+       Print(0,81,string("GIVE"),$AD)
+
+   curr_x := 4
+   curr_y := 86
+
+   ptr := @invb
+   repeat i from 0 to 3
+     if i < inv_cnt
+        GetItemName(byte[ptr+i])
+        Print(curr_x,curr_y,@filenb,$AD)
+     curr_x += 20
+
+   if inv_cnt > 3
+      curr_x := 4
+      curr_y := 91
+      repeat i from 4 to 7
+        if i < inv_cnt
+           GetItemName(byte[ptr+i])
+           Print(curr_x,curr_y,@filenb,$AD)
+        curr_x += 20
+
+   DrawChar(select_x,select_y,$1E,$AD)
+
 pub HandleRoom
     if in_event
       Interpret_Next_Command
 
     else
        if player_visible
-          if(key.keystate($C2))       'Up Arrow
+          if(key.Player1_Up == 1)       'Up Arrow
             if CheckPlayerMove(player_x, player_y-2)  == 0
                RestoreBackground(player_x,player_y,0)
                player_y -= 2
                player_dir := DIR_NORTH
                DrawPlayer
        
-          if(key.keystate($C3))       'Down Arrow
+          if(key.Player1_Down == 1)       'Down Arrow
             if CheckPlayerMove(player_x, player_y+2)  == 0
                RestoreBackground(player_x,player_y,0)
                player_y += 2
                player_dir := DIR_SOUTH
                DrawPlayer
             
-          if(key.keystate($C0))       'Left Arrow
+          if(key.Player1_Left == 1)       'Left Arrow
             if CheckPlayerMove(player_x - 2, player_y)  == 0
                RestoreBackground(player_x,player_y,0)
                player_x -= 2
                player_dir := DIR_WEST
                DrawPlayer
       
-          if(key.keystate($C1))       'Right Arrow
+          if(key.Player1_Right == 1)       'Right Arrow
             if CheckPlayerMove(player_x + 2, player_y)  == 0
                RestoreBackground(player_x,player_y,0)
                player_x += 2
                player_dir := DIR_EAST
                DrawPlayer
 
-       if(key.keystate($0D))       'Enter key
+       if(key.Player1_Fire)       'Enter key
             select_x := 0
             select_y := 86
             select_val := 1
@@ -360,35 +488,35 @@ pub HandleRoom
             focus := FOCUS_OPT_MENU
       
 pub HandleOptionsMenu
-   if(key.keystate(" "))       'Space key
+   if(key.Select)       '--now "a" key
       Cls
       focus := FOCUS_ROOM
 
-   if(key.keystate($C2))       'Up Arrow
+   if(key.Player1_Up == 1)       'Up Arrow
       if (select_y == 91)
           select_y := 86
           select_val++
           DrawOptionsMenu
 
-   if(key.keystate($C3))       'Down Arrow
+   if(key.Player1_Down == 1)       'Down Arrow
       if (select_y == 86)
           select_y := 91
           select_val--
           DrawOptionsMenu
    
-   if(key.keystate($C0))       'Left Arrow
+   if(key.Player1_Left == 1)       'Left Arrow
       if (select_x > 0)
           select_x-= 20
           select_val-=2
           DrawOptionsMenu
    
-   if(key.keystate($C1))       'Right Arrow
+   if(key.Player1_Right == 1)       'Right Arrow
       if (select_x =< 60)
           select_x+= 20
           select_val+=2
           DrawOptionsMenu
 
-   if(key.keystate($0D))       'Enter key
+   if(key.Player1_Fire == 1)       'Enter key
           Cls
           case select_val
              'TAKE selected
@@ -397,7 +525,8 @@ pub HandleOptionsMenu
 
              'USE selected
              1:
-               Print(4,82,string("ON USE"),$AD)
+               DrawInventoryMenu(on_use)
+               FOCUS := FOCUS_ITEM_MENU
 
              'TALK selected
              2:
@@ -409,7 +538,8 @@ pub HandleOptionsMenu
 
              'GIVE selected
              4:
-               Print(4,82,string("ON GIVE"),$AD)
+               DrawInventoryMenu(on_give)
+               FOCUS := FOCUS_ITEM_MENU
 
              'LOAD selected
              5:
@@ -424,7 +554,48 @@ pub HandleOptionsMenu
                Print(4,82,string("ON SAVE"),$AD)
 
           focus := FOCUS_ROOM
-          
+
+pub HandleInventoryMenu | ptr, var_ptr
+   if(key.Select)       '--now "a" key
+      Cls
+      focus := FOCUS_ROOM
+
+   if(key.Player1_Up == 1)       'Up Arrow
+      if (select_y == 91)
+          select_y := 86
+          select_val-=4
+          DrawOptionsMenu
+
+   if(key.Player1_Down == 1)       'Down Arrow
+      if (select_y == 86)
+          select_y := 91
+          select_val+= 4
+          DrawOptionsMenu
+
+   if(key.Player1_Left == 1)       'Left Arrow
+      if (select_x > 0)
+          select_x-= 20
+          select_val--
+          DrawOptionsMenu
+
+   if(key.Player1_Right == 1)       'Right Arrow
+      if (select_x =< 60)
+          select_x+= 20
+          select_val++
+          DrawOptionsMenu
+
+   if(key.Player1_Fire == 1)       'Enter key
+      if select_val < inv_cnt
+         ptr := @invb
+         var_ptr := @varb
+         'add the selected item to the last selected item variable
+         byte[var_ptr + 3] := byte[ptr+select_val]
+
+      Cls
+      focus := FOCUS_ROOM
+      'initiate the event that was specified prior
+      Start_Event(sub_action)
+
 '***************** Room Load  *********************** 
 pub Start_Event (event_ptr) | ptr
    ptr := @codeb + event_ptr
@@ -560,11 +731,22 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
         player_visible := true
         'force the redraw of the player
         DrawPlayer
-	code_ptr += 4
+        code_ptr += 4
      
-'     CMD_INV_ADD:
-'     CMD_INV_TEST:
-'     CMD_INV_REM:
+     CMD_INV_ADD:
+        InventoryAdd(byte[code_ptr + 2])
+        code_ptr += 4
+
+     CMD_INV_TEST:
+        met := InventoryTest(byte[code_ptr + 2])
+        if met == true
+           code_ptr += 4
+        else
+           code_ptr := @codeb + byte[code_ptr + 3]
+
+     CMD_INV_REM:
+        InventoryRemove(byte[code_ptr + 2])
+        code_ptr += 4
 
      CMD_END:
        in_event := false
@@ -579,6 +761,31 @@ pub CheckHotspot (hot_id) | ptr, met
               met := true
    return met
 
+pub InventoryAdd (item_id) | ptr
+   ptr := @invb + inv_cnt
+   byte[ptr] := item_id
+   inv_cnt++
+
+pub InventoryItemAt(item_id) | ptr, i, ret_val
+   ret_val := -1
+   repeat i from 0 to inv_cnt
+      if byte[ptr][i] == item_id
+         ret_val := i
+         quit
+   return ret_val
+
+pub InventoryTest (item_id) | ptr, i, ret_val
+   ret_val := false
+   if InventoryItemAt(item_id) > -1
+      ret_val := true
+   return ret_val
+
+pub InventoryRemove (item_id) | loc
+   loc := InventoryItemAt(item_id)
+   if loc > -1
+      bytemove(@invb, @invb +(loc+1), inv_cnt-1)
+      inv_cnt--
+
 pub ShowSay (text_ptr) | ptr
    ptr := @codeb + text_ptr
    CLS
@@ -586,7 +793,7 @@ pub ShowSay (text_ptr) | ptr
    focus := FOCUS_SAY
        
 pub HandleSay
-   if(key.keystate($0D))       'Enter key
+   if(key.Player1_Fire == 1)       'Enter key
       Cls
       focus := FOCUS_ROOM
 
@@ -608,6 +815,7 @@ pub LoadRoom(roomid) | i, ptr
 
    'load the PINT code
    sd.pread(@codeb, CODE_BUF_SIZE)
+   sd.pclose
 
    'initialize the player variables
    player_x := 0
@@ -621,6 +829,11 @@ pub LoadRoom(roomid) | i, ptr
 
    'start On_Load event
    Start_Event(on_load)
+
+pub LoadItems | i
+  i := sd.popen(string("0.IT"), "r")
+  sd.pread(@itemb, ITEM_BUF_SIZE)
+  sd.pclose
 
 pub GetFileName(value)| ptr, i
   bytefill(@filenb, 0, 12)
@@ -638,6 +851,11 @@ pub GetFileName(value)| ptr, i
   byte[ptr++] := "."
   byte[ptr++] := "R"
   byte[ptr++] := "M"
+
+pub GetItemName(itemid) | ptr
+  bytefill(@filenb, 0, 12)
+  bytemove(@filenb, @itemb + (4 * itemid), 4)
+
 DAT
 
 '0 = black

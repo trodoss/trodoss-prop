@@ -20,7 +20,7 @@ namespace PINTCompiler {
 		/// <sumary>
 		/// Retrieves the version text 
 		/// </sumary>
-		private static string VersionText() { return "v0.1"; }
+		private static string VersionText() { return "v0.2"; }
 			
 			
 		//*********** P U B L I C   F U N C T I O N S  ( M E T H O D S ) ******
@@ -54,69 +54,25 @@ namespace PINTCompiler {
 								thisRoom = Assembly.Analyzer.Analyze(thisRoom, thisLog);
 								if (thisLog.CanContinue) {
 									Assembly.PINTRoomFile thisFile = new Assembly.PINTRoomFile();
-									thisFile.Save(thisRoom.RoomID + ".rm", thisRoom, thisLog);
+									thisFile.Save(thisRoom.RoomID + ".RM", thisRoom, thisLog);
 									thisFile = null;
+									
+									//special processing for roomID 0 (startup room) - generate the item file
+									if (thisRoom.RoomID == 0) {
+										Assembly.PINTItemFile thisItemFile = new Assembly.PINTItemFile();
+										thisItemFile.Save("0.IM", thisRoom.Items, thisLog);
+										thisItemFile = null;
+									}
 								}
 							}
 						}
-					}
-					//foreach (SourceLine thisLine in newLines) {
-					//	Console.WriteLine(thisLine.LineNumber + "> " + thisLine.Code);
-					//}	
-
-					
+					}			
 				}
-				
-				/*
-				PINTRoomEntry thisEntry = Parser.Parse(fileName, thisLog);
-				if (thisEntry.Log.CanContinue) {
-					thisEntry = Analyzer.Analyze(thisEntry);
-					if (thisEntry.Log.CanContinue) {
-						PINTRoomFile thisFile = new PINTRoomFile();
-						thisFile.Save("000.rm", thisEntry);
-						thisFile = null;
-					}
-				}
-				*/
-				
+						
 				foreach (CompilationLogEntry entry in thisLog.Entries) {
 					Console.WriteLine(entry.Source + "> Line: " + entry.LineNumber + " Message: " + entry.Message);
 				}
 				
-				/*
-				
-				Console.WriteLine("global variables **************************");
-				foreach (PINTBasicByte thisByte in thisApplication.Variables) {
-					Console.WriteLine(thisByte.Name);
-				}
-				
-				Console.WriteLine("global PIC resources **************************");
-				foreach (PINTBasicPic thisPic in thisApplication.Pics) {
-					Console.WriteLine(thisPic.Name + " - FileName: " + thisPic.FileName);
-				}
-				
-				foreach (PINTBasicRoom thisRoom in thisApplication.Rooms) {
-					Console.WriteLine("Room informaation ********");
-					
-					Console.WriteLine("room variables ***********");
-					foreach (PINTBasicByte thisRoomByte in thisRoom.Variables) {
-						Console.WriteLine(thisRoomByte.Name);
-					}
-					
-					Console.WriteLine("room PiC resources *******");
-					foreach (PINTBasicPic thisRoomPic in thisRoom.Pics) {
-						Console.WriteLine(thisRoomPic.Name + " - FileName: " + thisRoomPic.FileName);
-					}	
-
-					Console.WriteLine("Events *******");
-					foreach (PINTBasicEvent thisEvent in thisRoom.Events) {
-						Console.WriteLine(thisEvent.Name + " - Statements: " + thisEvent.Statements.Count);
-						foreach (PINTBasicStatement thisStatement in thisEvent.Statements) {
-							Console.WriteLine(thisStatement.GetType().Name);
-						}
-					}						
-				}
-				*/
 				
 			} else {
 				Console.WriteLine("PINTCompiler " + VersionText() + " - no file name specified. ");

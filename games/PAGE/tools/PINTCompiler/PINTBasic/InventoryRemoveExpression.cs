@@ -8,10 +8,10 @@ using PINTCompiler.Utilities;
 //***************************************
 namespace PINTCompiler.PINTBasic {
 	public class InventoryRemoveExpression : MethodExpression {
-		public int ItemID;
+		public ItemReferenceExpression Item;
 		
-		public InventoryRemoveExpression(int itemID) {
-			this.ItemID = itemID;
+		public InventoryRemoveExpression(ItemReferenceExpression thisItem) {
+			this.Item = thisItem;
 		}			
 	}
 }

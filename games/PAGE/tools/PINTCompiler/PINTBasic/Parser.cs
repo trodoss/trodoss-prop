@@ -86,6 +86,33 @@ namespace PINTCompiler.PINTBasic {
 			return returnExpression;
 		}
 		
+		public ItemReferenceExpression ResolveAsItemReferenceExpression(string thisElement, CompilationLog thisLog, SourceLine thisLine) {
+			thisElement = thisElement.ToUpper();
+			ItemReferenceExpression returnExpression = null;
+			PINTBasicItem thisItem = thisApplication.Items.FindByName(thisElement);
+			if (thisItem == null) {
+				WriteError(thisLog, thisLine, "unable to resolve '"+thisElement+"' as a valid item reference expression element");
+			} else {
+				returnExpression = new ItemReferenceExpression(thisItem.ID);
+			}
+			return returnExpression;
+		}		
+		
+		public ItemReferenceExpression ExpectedItemReferenceExpression(string[] elements, string statementName, CompilationLog thisLog, SourceLine thisLine) {
+			ItemReferenceExpression returnValue = null;
+			string thisElement = "";
+			
+			i++;
+			if (i+1 <= elements.Length) {
+				thisElement = elements[i].ToUpper();
+				returnValue = ResolveAsItemReferenceExpression(thisElement, thisLog, thisLine);
+			} else {
+				WriteError(thisLog, thisLine, "expected item reference expression in '" + statementName + "' statement");
+			}
+			return returnValue;
+			
+		}		
+		
 		public MethodExpression ResolveAsMethodExpression(string thisElement, string[] elements, CompilationLog thisLog, SourceLine thisLine) {
 			MethodExpression returnExpression = null;
 			string[] methodElements = thisElement.Split('.');
@@ -129,8 +156,8 @@ namespace PINTCompiler.PINTBasic {
 								case "CONTAINS":
 									//INVENTORY.Contains(item#)
 									if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
-										int containsItemID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
-										if (containsItemID > -1) {
+										ItemReferenceExpression containsItemID = ExpectedItemReferenceExpression(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (containsItemID != null) {
 											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
 												returnExpression = new InventoryContainsExpression (containsItemID);
 											}
@@ -141,8 +168,8 @@ namespace PINTCompiler.PINTBasic {
 								case "ADD":
 									//INVENTORY.Add(item#)
 									if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
-										int addItemID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
-										if (addItemID > -1) {
+										ItemReferenceExpression addItemID = ExpectedItemReferenceExpression(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (addItemID != null) {
 											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
 												returnExpression = new InventoryAddExpression (addItemID);
 											}
@@ -154,8 +181,8 @@ namespace PINTCompiler.PINTBasic {
 								case "REMOVE":
 									//INVENTORY.Remove(item#)
 									if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
-										int removeItemID = ExpectedConstantOrNumber(elements, methodElements[1].ToUpper(), thisLog, thisLine);
-										if (removeItemID > -1) {
+										ItemReferenceExpression removeItemID = ExpectedItemReferenceExpression(elements, methodElements[1].ToUpper(), thisLog, thisLine);
+										if (removeItemID != null) {
 											if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
 												returnExpression = new InventoryRemoveExpression (removeItemID);
 											}
@@ -491,6 +518,7 @@ namespace PINTCompiler.PINTBasic {
 					case "BACKDROP":
 					case "BYTE":	
 					case "HOTSPOT":
+					case "ITEM":					
 					case "PIC":
 						break;
 															
@@ -506,12 +534,21 @@ namespace PINTCompiler.PINTBasic {
 		}
 		
 		public PINTBasicStatementList ParseStatements(CompilationLog thisLog, SourceLineList lines, string terminatorStatement) {
+			
+			ArrayList returnCollection = ParseStatements(thisLog, lines, null, terminatorStatement);
+			PINTBasicStatementList returnEntry = (PINTBasicStatementList)returnCollection[0];
+			return returnEntry;
+		}
+		
+		public ArrayList ParseStatements(CompilationLog thisLog, SourceLineList lines, string secondaryTerminator, string terminatorStatement) {
+			ArrayList returnArray = new ArrayList();
 			PINTBasicStatementList returnList = new PINTBasicStatementList();
+			PINTBasicStatementList secondaryStatements = null;
+			
 			bool terminatorReached = false;
 			if (canContinue) {
 				while (!endOfSource) {
-//				for (statementLine = currentLine; statementLine<lines.Count; statementLine++) {
-					SourceLine thisLine = GetNextLine(lines);//lines[statementLine];
+					SourceLine thisLine = GetNextLine(lines);
 					if (thisLine != null) {
 						string[] elements = Tokenizer.TokenizeLine(thisLine.Code);
 						canContinue = true;
@@ -558,7 +595,13 @@ namespace PINTCompiler.PINTBasic {
 														PINTBasicIf thisIf = null;
 														if (thisIfCondition != null) thisIf = new PINTBasicIf(thisLine, thisIfCondition);
 														if (thisMethodIfCondition != null) thisIf = new PINTBasicIf(thisLine, thisMethodIfCondition);
-														thisIf.Met = ParseStatements(thisLog, lines, "IF");
+														ArrayList ifCollection = ParseStatements(thisLog, lines, "ELSE","IF");
+														thisIf.Met = (PINTBasicStatementList) ifCollection[0];
+														if (ifCollection.Count > 1) {
+															thisIf.HasElseClause = true;
+															thisIf.Else = (PINTBasicStatementList) ifCollection[1];
+														}
+														ifCollection = null;
 														returnList.Add(thisIf);
 														thisIf = null;
 													}
@@ -581,7 +624,15 @@ namespace PINTCompiler.PINTBasic {
 											}
 											break;
 										
-										default:										
+											
+										default:
+											//test for the secondary terminator -- if found then search for the primary terminator.
+											if (element.ToUpper() == secondaryTerminator) {
+												secondaryStatements = ParseStatements(thisLog, lines, terminatorStatement);	
+												terminatorReached = true;
+												break;											
+											}
+											
 											//process assignments or method invocation, and only at the beginning of a line
 											if (i == 0 ) {
 												//indication of an object method invocation
@@ -633,7 +684,9 @@ namespace PINTCompiler.PINTBasic {
 			if (!terminatorReached) {
 				WriteError(thisLog, lines[lines.Count-1], "expected END "+terminatorStatement+" statement");
 			}
-			return returnList;
+			returnArray.Add(returnList);
+			if (secondaryStatements != null) returnArray.Add(secondaryStatements);
+			return returnArray;
 		}
 		
 		public PINTBasicApplication Parse(CompilationLog thisLog, SourceLineList lines) {
@@ -735,6 +788,13 @@ namespace PINTCompiler.PINTBasic {
 															if (!thisApplication.AddVariable(dimIdentifier)) WriteError(thisLog, thisLine, "maximum number of global variables exceeded.");
 														}
 														break;
+														
+													case "ITEM":
+														parameters = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
+														if (parameters[0] != null) {
+															if (!thisApplication.AddItem(dimIdentifier, parameters[0])) WriteError(thisLog, thisLine, "maximum number of Item resources exceeded.");
+														}
+														break;														
 												}
 											}
 										}									

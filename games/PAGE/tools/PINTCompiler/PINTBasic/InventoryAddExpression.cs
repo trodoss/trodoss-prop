@@ -8,10 +8,10 @@ using PINTCompiler.Utilities;
 //***************************************
 namespace PINTCompiler.PINTBasic {
 	public class InventoryAddExpression : MethodExpression {
-		public int ItemID;
+		public ItemReferenceExpression Item;
 		
-		public InventoryAddExpression(int itemID) {
-			this.ItemID = itemID;
+		public InventoryAddExpression(ItemReferenceExpression thisItem) {
+			this.Item = thisItem;
 		}			
 	}
 }
