@@ -208,6 +208,39 @@ namespace PINTCompiler.Assembly {
 			return thisRoom;
 		}		
 		
+		//***********************************************************************************
+		private static PINTItemEntryList PreProcessItems(CompilationLog thisLog, PINTItemEntryList thisList) {
+			for (int i=0; i< thisList.Count; i++) {
+				PINTItemEntry thisItem = (PINTItemEntry) thisList[i];
+				//remove any embedded quotes
+				thisItem.Text = thisItem.Text.Replace("\"", "");
+				//strip down to just the ASCII we want
+				thisItem.Text = Regex.Replace(thisItem.Text, @"[^\u0020-\u005F]", "");
+				
+				if (thisItem.Text.Length > 4) {
+					WriteError(thisLog, thisItem.Source, "Item size exceeded.  Items must be 4 characters or less.  String Size: " + thisItem.Text.Length);
+				} else {
+					ASCIIEncoding thisEncoding = new ASCIIEncoding();
+					byte[] result = new byte[4];
+					byte[] encodeBytes = thisEncoding.GetBytes(thisItem.Text);
+					Array.Copy(encodeBytes,0,result,0,encodeBytes.Length);
+					thisItem.Bytes = result;
+				}
+			}
+			
+			return thisList;
+		}
+		
+		
+		public static PINTItemEntryList Analyze(PINTItemEntryList thisList, CompilationLog thisLog) {
+			WriteInformation(thisLog, "Analyzing item data");
+			
+			WriteInformation(thisLog, "Pre-processing item data");
+			thisList = PreProcessItems(thisLog, thisList);
+			
+			return thisList;
+		}
+		
 		public static PINTRoomEntry Analyze(PINTRoomEntry thisRoom, CompilationLog thisLog) {
 			WriteInformation(thisLog, "Analyzing room ID \"" + thisRoom.RoomID + "\"");
 			
@@ -224,7 +257,17 @@ namespace PINTCompiler.Assembly {
 					WriteInformation(thisLog, "Resolving label references");
 					thisRoom = ResolveReferences(thisLog, thisRoom);
 				}
+				
+				//special processing for room ID 0 = startup room
+				//process the item data for use in the game.
+				if (thisRoom.RoomID == 0) {
+					WriteInformation(thisLog, "Startup room (0) Special Processing - Analyzing item data");
+					
+					WriteInformation(thisLog, "Pre-processing item data");
+					thisRoom.Items = PreProcessItems(thisLog, thisRoom.Items);	
+				}
 			}
+			
 			return thisRoom;
 		}		
 	}

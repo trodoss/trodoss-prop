@@ -1,33 +1,24 @@
 using System;
 using System.Collections.Generic;
 //****************************************
-// PINTBasicConstantList
-// 2010 trodoss
+// PINTBasicItemList
+// 2010-2011 trodoss
 //See end of file for terms of use.  
 //***************************************
 namespace PINTCompiler.PINTBasic {
 	//*********************************************************************
-	// PINTBasicLabelList Class
+	// PINTBasicPicList Class
 	//*********************************************************************
-	public class PINTBasicLabelList : List<PINTBasicLabel> {
-			
-			public int FindIndexByID(int levelID) {
-				int findIndex = this.FindIndex(
-					delegate(PINTBasicLabel thisLabel) {
-						return thisLabel.LevelID == levelID;
-					}
-				);
-				return findIndex;
-			}
-			
-			public int FindLastIndexByID(int levelID) {
-				int findIndex = this.FindLastIndex(
-					delegate(PINTBasicLabel thisLabel) {
-						return thisLabel.LevelID == levelID;
-					}
-				);
-				return findIndex;
-			}			
+	public class PINTBasicItemList : List<PINTBasicItem> {
+	
+		public PINTBasicItem FindByName(string name) {
+			PINTBasicItem returnItem = this.Find(
+				delegate(PINTBasicItem thisItem) {
+					return thisItem.Name == name;
+				}
+			);
+			return returnItem;
+		}
 			
 	}
 }

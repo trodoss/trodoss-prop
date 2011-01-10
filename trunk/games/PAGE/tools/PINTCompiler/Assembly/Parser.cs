@@ -209,6 +209,27 @@ namespace PINTCompiler.Assembly {
 									}
 								break;
 								
+								case "ITEM":
+									if (i+1 < elements.Length) {
+										i++;
+										string itemIDText = elements[i].ToUpper();
+										int itemID = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, itemIDText);
+										
+										if (i+1 < elements.Length) {
+											i++;
+											string text = elements[i].ToUpper();
+											PINTItemEntry thisItemEntry = new PINTItemEntry(itemID, text);
+											thisItemEntry.Source = thisLine;
+											thisRoom.Items.Add(thisItemEntry);
+											thisItemEntry = null;
+										} else {
+											WriteError(thisLog, thisLine, "item data expected in item declaration");
+										}
+									} else {
+										WriteError(thisLog, thisLine, "item identifier expected in item declaration");
+									}
+								break;									
+								
 								case "PIC":
 									if (i+1 < elements.Length) {
 										i++;

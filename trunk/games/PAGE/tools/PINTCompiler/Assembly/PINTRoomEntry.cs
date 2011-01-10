@@ -15,6 +15,7 @@ namespace PINTCompiler.Assembly {
 		public PINTStringList Strings;
 		public Hashtable Constants;
 		public PINTPicEntryList Pics;
+		public PINTItemEntryList Items;
 		public int RoomID;
 		public CompilationLog Log;
 		
@@ -29,6 +30,7 @@ namespace PINTCompiler.Assembly {
 			this.Strings = new PINTStringList();
 			this.Backdrop = new PINTBackdropEntry();
 			this.Pics = new PINTPicEntryList();
+			this.Items = new PINTItemEntryList();
 			this.RoomID = roomID;
 			this.Log = log;
 			

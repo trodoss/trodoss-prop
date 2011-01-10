@@ -11,23 +11,27 @@ namespace PINTCompiler.PINTBasic {
 		public PINTBasicPicList Pics;
 		public PINTBasicByteList Variables;
 		public PINTBasicConstantList Constants;
+		public PINTBasicItemList Items;
 		public PINTBasicTextList Texts;
 		
 		private int maxConstantID;
 		private int maxVariableID;
 		private int maxPicID;
+		private int maxItemID;
 		private int maxTextID;
 		
 		public PINTBasicApplication () {
 			maxConstantID = 0;
 			maxVariableID = 0;
 			maxTextID = 0;
+			maxItemID = 0;
 			maxPicID = 0;
 			this.Rooms = new PINTBasicRoomList();
 			this.Pics = new PINTBasicPicList();
 			this.Variables = new PINTBasicByteList();
 			this.Constants = new PINTBasicConstantList();
 			this.Texts = new PINTBasicTextList();
+			this.Items = new PINTBasicItemList();
 		}
 				
 		public void AddConstant(string constantName, int constantValue) {
@@ -59,7 +63,7 @@ namespace PINTCompiler.PINTBasic {
 			this.Pics.Add(new PINTBasicPic(maxPicID, picName, fileName));
 			maxPicID++;
 			
-			//if we have exceeded the number of global variables, then let the compiler know
+			//if we have exceeded the number of pics, then let the compiler know
 			if (maxPicID > 6) {
 				return false;
 			} else {
@@ -68,6 +72,18 @@ namespace PINTCompiler.PINTBasic {
 			
 		}
 		
+		public bool AddItem(string itemName, string text) {
+			this.Items.Add(new PINTBasicItem(maxItemID, itemName, text));
+			maxItemID++;
+			
+			//if we have exceeded the number of items, then let the compiler know
+			if (maxItemID > 7) {
+				return false;
+			} else {
+				return true;
+			}		
+		}		
+	
 	}
 }
 /*

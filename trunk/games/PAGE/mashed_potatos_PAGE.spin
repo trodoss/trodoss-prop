@@ -40,16 +40,20 @@ CON
   ' Set up the processor clock in the standard way for 80MHz
   _CLKMODE = xtal1 + pll16x
   _XINFREQ = 5_000_000
-
+'var                    
+'  long BasePin 
    
-PUB start(tvpointer)
-
- cognew(@entry,tvpointer)
+PUB start(tvpointer, _VCFG, _DirA)
+  d_VCFG := _VCFG
+  d_DIRA := _DirA 
+  
+  cognew(@entry,tvpointer)
   
 DAT                     org
 entry                   jmp     #initialization         'Jump past the constants
 
-
+DAT  d_VCFG           long  0
+DAT  d_DIRA           long  0       
 
 CON  NTSC_color_frequency       =     3_579_545
 DAT  NTSC_color_freq            long  NTSC_color_frequency
@@ -114,11 +118,13 @@ DAT
 
 initialization          'set up VCFG
 
+                        mov     VCFG, d_VCFG
+                        or      DIRA, d_DirA
                         ' VCFG: setup Video Configuration register and 3-bit tv DAC pins to output
-                        movs    VCFG, #%0111_0000       ' VCFG'S = pinmask (pin31: 0000_0111 : pin24)
-                        movd    VCFG, #1                ' VCFG'D = pingroup (grp. 3 i.e. pins 24-31)
+                        'movs    VCFG, #%0111_0000       ' VCFG'S = pinmask (pin31: 0000_0111 : pin24)
+                        'movd    VCFG, #1                ' VCFG'D = pingroup (grp. 3 i.e. pins 24-31)
 
-                        movi    VCFG, #%0_11_111_000    ' baseband video on bottom nibble, 2-bit color, enable chroma on broadcast & baseband
+                        'movi    VCFG, #%0_11_111_000    ' baseband video on bottom nibble, 2-bit color, enable chroma on broadcast & baseband
                                                         ' %0_xx_x_x_x_xxx : Not used
                                                         ' %x_10_x_x_x_xxx : Composite video to top nibble, broadcast to bottom nibble
                                                         ' %x_xx_1_x_x_xxx : 4 color mode
@@ -126,7 +132,7 @@ initialization          'set up VCFG
                                                         ' %x_xx_x_x_1_xxx : Enable chroma on baseband
                                                         ' %x_xx_x_x_x_000 : Broadcast Aural FM bits (don't care)
 
-                        or      DIRA, tvport_mask       ' set DAC pins to output
+                        'or      DIRA, tvport_mask       ' set DAC pins to output
 
                         ' 
 '                        or      DIRA, #1                ' enable debug LED
