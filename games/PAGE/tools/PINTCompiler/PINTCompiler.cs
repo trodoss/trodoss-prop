@@ -20,7 +20,7 @@ namespace PINTCompiler {
 		/// <sumary>
 		/// Retrieves the version text 
 		/// </sumary>
-		private static string VersionText() { return "v0.2"; }
+		private static string VersionText() { return "v0.3"; }
 			
 			
 		//*********** P U B L I C   F U N C T I O N S  ( M E T H O D S ) ******
@@ -57,11 +57,15 @@ namespace PINTCompiler {
 									thisFile.Save(thisRoom.RoomID + ".RM", thisRoom, thisLog);
 									thisFile = null;
 									
-									//special processing for roomID 0 (startup room) - generate the item file
+									//special processing for roomID 0 (startup room) - generate the item file and process MIDI files
 									if (thisRoom.RoomID == 0) {
 										Assembly.PINTItemFile thisItemFile = new Assembly.PINTItemFile();
 										thisItemFile.Save("0.IM", thisRoom.Items, thisLog);
 										thisItemFile = null;
+										
+										Assembly.PINTMIDIFileWriter thisMIDIWriter = new Assembly.PINTMIDIFileWriter();
+										thisMIDIWriter.Process(thisRoom.Musics, thisLog);
+										thisMIDIWriter = null;
 									}
 								}
 							}

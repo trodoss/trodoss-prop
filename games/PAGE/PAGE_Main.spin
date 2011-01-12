@@ -8,9 +8,11 @@ PAGE interpereter
     Unsoundcode, Chris Savage (SavageCircuits.com)
 
 Version History:
-- 0.1 - trodoss:  initial release
+- 0.1 -  trodoss: initial release
 - 0.2 - roadster: added configuration options
          trodoss: added item/inventory handling
+- 0.3 -  trodoss: integration of gm_synth
+        roadster: integration of MIGS code (input)
 
 
 See the bottom of the code for terms of use.
@@ -129,6 +131,11 @@ CON
   
   CODE_BUF_SIZE  = 512
 
+  'file type indicators
+  FILE_TYPE_IT   = 0
+  FILE_TYPE_RM   = 1
+  FILE_TYPE_MID  = 2
+
   'position in the event table of each event location
   on_load     = 0
   on_use      = 2
@@ -163,6 +170,7 @@ CON
   CMD_INV_ADD   = 80
   CMD_INV_TEST  = 82
   CMD_INV_REM   = 84
+  CMD_MUS_PLAY  = 90
   CMD_END       = 255
  
 VAR
@@ -200,9 +208,12 @@ VAR
   byte select_val
 
   byte sub_action                                      'sub action on the menu
+
+  long  time, tq, ts, us                               'MIDI vars
       
 OBJ
     tv   : "mashed_potatos_PAGE"
+    synth: "pm_synth_20"
 
     'use this for keyboard
     key  : "migs_keyboard"
@@ -215,6 +226,8 @@ OBJ
 PUB Main
    sd.start(@ioControl)
    sd.mount(spiDO,spiClk,spiDI,spiCS)
+
+   synth.start(Sound,-1,2)
 
    inv_cnt := 0
    'initially load item data
@@ -748,6 +761,10 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
         InventoryRemove(byte[code_ptr + 2])
         code_ptr += 4
 
+     CMD_MUS_PLAY:
+        MusicPlay(byte[code_ptr + 2])
+        code_ptr += 4
+
      CMD_END:
        in_event := false
 
@@ -798,7 +815,7 @@ pub HandleSay
       focus := FOCUS_ROOM
 
 pub LoadRoom(roomid) | i, ptr
-   GetFileName(roomid)
+   GetFileName(roomid, FILE_TYPE_RM)
    i:=sd.popen(@filenb, "r")
 
    sd.pread(@displayb, BACKDROP_SIZE)
@@ -831,11 +848,12 @@ pub LoadRoom(roomid) | i, ptr
    Start_Event(on_load)
 
 pub LoadItems | i
-  i := sd.popen(string("0.IT"), "r")
+  GetFileName(0, FILE_TYPE_IT)
+  i := sd.popen(@filenb, "r")
   sd.pread(@itemb, ITEM_BUF_SIZE)
   sd.pclose
 
-pub GetFileName(value)| ptr, i
+pub GetFileName(value, type)| ptr, i
   bytefill(@filenb, 0, 12)
   ptr := @filenb
 
@@ -849,12 +867,131 @@ pub GetFileName(value)| ptr, i
         byte[ptr++] := "0"
      i /= 10
   byte[ptr++] := "."
-  byte[ptr++] := "R"
-  byte[ptr++] := "M"
+
+  case type
+     FILE_TYPE_IT:
+       byte[ptr++] := "I"
+       byte[ptr++] := "T"
+
+     FILE_TYPE_RM:
+       byte[ptr++] := "R"
+       byte[ptr++] := "M"
+
+     FILE_TYPE_MID:
+       byte[ptr++] := "M"
+       byte[ptr++] := "I"
+       byte[ptr++] := "D"
 
 pub GetItemName(itemid) | ptr
   bytefill(@filenb, 0, 12)
   bytemove(@filenb, @itemb + (4 * itemid), 4)
+
+pub MusicPlay(songid) | lg, dt, b, v, st, d1, d2, ch
+  us := clkfreq / 1_000_000                             'ticks / microsecond
+  b := st := d1 := d2 := v := 0
+
+  GetFileName(songid, FILE_TYPE_MID)
+  ifnot sd.popen(@filenb, "r")
+    sd.pread(@v,4)
+    if v == "M" + "T"<<8 + "h"<<16 + "d"<<24            'Header ID
+      sd.pread(@v,4)                                    'Header Len
+      v~
+      sd.pread(@v,2)                                    'Format
+      if v <> 0
+       'only Format 0 supported
+      else
+        sd.pread(@v,2)                                  'Tracks
+        sd.pread(@v,2)                                  'Ticks/Quarter
+        tq := v>>8 + (v&255)<<8
+        ts := 500_000 / tq                              'default Tempo 120 BPM
+        sd.pread(@v,4)                                  '"MTrk"
+        sd.pread(@v,4)                                  'Track length
+        lg := v>>24 + (v>>16&255)<<8 + (v>>8&255)<<16
+        time := cnt
+        repeat
+          sd.pread(@b,1)                                'get delta time
+          lg--
+          dt := b & $7F
+          repeat while b>127
+            sd.pread(@b,1)
+            lg--
+            dt := dt<<7 + (b & $7F)
+          time := time + dt*us*ts
+          repeat until time-cnt < 0                     'wait deltatime
+          b~
+          sd.pread(@b,1)                                'MIDI byte
+          if b > 127
+            st := b                                     'new status byte
+          elseif st==$FF
+            st~
+          ch := st & $0F
+          d1~
+          d2~
+          case st & $F0                                 'decode MIDI Event
+            $90: sd.pread(@d1,1)                        'Note
+                 sd.pread(@d2,1)                        'Velocity
+                 lg -= 3
+                 if d2>0
+                   synth.noteOn(d1,ch,d2)               'Note On
+                 else
+                   synth.noteOff(d1,ch)                 'Note Off if Vel=0
+            $80: sd.pread(@d1,1)                        'Note Off
+                 sd.pread(@d2,1)                        'Velocity
+                 lg -= 3
+                 synth.noteOff(d1,ch)
+            $A0: sd.pread(@d1,1)                        'Poly AfterTouch
+                 sd.pread(@d2,1)                        '(not supported)
+                 lg -= 3
+            $C0: sd.pread(@d1,1)                        'Prg Change
+                 lg -= 2
+                 synth.prgChange(d1,ch)
+            $D0: sd.pread(@d1,1)                        'Mono AfterTouch
+                 lg -= 2                                '(not supported)
+            $B0: sd.pread(@d1,1)                        'Controller (nr)
+                 sd.pread(@d2,1)                        'value
+                 lg -= 3
+                 if d1==7
+                   synth.volContr(d2,ch)                '7=Vol
+                 if d1==10
+                   synth.panContr(d2,ch)                '10=Pan
+            $E0: sd.pread(@d1,1)                        'Pitch Bender
+                 sd.pread(@d2,1)                        '(not supported!)
+                 lg -= 3
+            $F0: sd.pread(@d1,1)                        'Meta Event
+                 v~
+                 if st==$F0 or st==$F7                  'SysEx
+                   repeat
+                     sd.pread(@v,1)
+                     lg--
+                     d1--
+                   until v==$F7 or b=< 0
+                   d1~
+                 else
+                   lg -= 2
+                   sd.pread(@b,1)                       'Len
+                   repeat while b>0                     'read meta data
+                     sd.pread(@d2,1)
+                     v := v<<8 + d2
+                     b--
+                     lg--
+                   if d1==81                            'Tempo
+                     ts := v / tq
+            0:   sd.pread(@d1,1)                        'Meta Event Running status
+                 lg -= 2
+                 sd.pread(@b,1)                         'Len
+                 repeat while b>0                       'read meta data
+                   sd.pread(@d2,1)
+                   v := v<<8 + d2
+                   b--
+                   lg--
+
+        until lg < 1
+    else
+     'No MIDI file
+    sd.pclose
+    synth.allOff
+  else
+   'File not found
 
 DAT
 

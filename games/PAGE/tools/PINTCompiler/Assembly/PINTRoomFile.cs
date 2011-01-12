@@ -222,6 +222,15 @@ namespace PINTCompiler.Assembly {
 								inventoryRemove = null;
 								break;	
 								
+							case "MusicPlay":
+								MusicPlay musicPlay = (MusicPlay)thisCommand;
+								binaryWriter.Write(musicPlay.Opcode);
+								binaryWriter.Write((byte)0);
+								binaryWriter.Write((byte)musicPlay.MusicID);			
+								binaryWriter.Write((byte)0);
+								musicPlay = null;
+								break;									
+								
 							case "EventEnd":
 								EventEnd eventEndCommand = (EventEnd) thisCommand;
 								binaryWriter.Write((byte)eventEndCommand.Opcode);

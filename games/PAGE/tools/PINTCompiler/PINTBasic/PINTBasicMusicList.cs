@@ -1,70 +1,25 @@
 using System;
-using System.Collections;
-using PINTCompiler.Utilities;
+using System.Collections.Generic;
 //****************************************
-// PINTRoomEntry
-// 2010 trodoss
+// PINTBasicMusicList
+// 2011 trodoss
 //See end of file for terms of use.  
 //***************************************
-namespace PINTCompiler.Assembly {
-	public class PINTRoomEntry {
-		public PINTBackdropEntry Backdrop;
-
-		public PINTHotspotEntryList Hotspots;
-		public PINTCommandList Commands;
-		public PINTStringList Strings;
-		public Hashtable Constants;
-		public PINTPicEntryList Pics;
-		public PINTItemEntryList Items;
-		public PINTMusicEntryList Musics;
-		public int RoomID;
-		public CompilationLog Log;
-		
-		public int Offset;
-		
-		public int[] EventTableEntries;
-
-		public PINTRoomEntry( int roomID, CompilationLog log) {
-			this.Constants = new Hashtable();
-			this.Hotspots = new PINTHotspotEntryList();
-			this.Commands = new PINTCommandList();
-			this.Strings = new PINTStringList();
-			this.Backdrop = new PINTBackdropEntry();
-			this.Pics = new PINTPicEntryList();
-			this.Items = new PINTItemEntryList();
-			this.Musics = new PINTMusicEntryList();
-			this.RoomID = roomID;
-			this.Log = log;
-			
-			this.EventTableEntries = new int[10];
-			
-			//assume the static header size
-			this.Offset = 36;
-		}
-		
-		public int FindCommandLocationByLabel(string label) {
-			int returnLoc = -1;
-			for (int i=0; i< Commands.Count; i++) {
-				PINTCommand thisCommand = (PINTCommand) Commands[i];
-				if (thisCommand.Label == label) {
-					returnLoc = i;
-					break;
+namespace PINTCompiler.PINTBasic {
+	//*********************************************************************
+	// PINTBasicMusicList Class
+	//*********************************************************************
+	public class PINTBasicMusicList : List<PINTBasicMusic> {
+	
+		public PINTBasicMusic FindByName(string name) {
+			PINTBasicMusic returnMusic = this.Find(
+				delegate(PINTBasicMusic thisMusic) {
+					return thisMusic.Name == name;
 				}
-			}	
-			return returnLoc;
+			);
+			return returnMusic;
 		}
-		
-		public int FindTextOffsetByID(int textID) {
-			int returnOffset = -1;
-			foreach (PINTString thisString in this.Strings) {
-				if (thisString.StringID == textID) {
-					returnOffset = thisString.Offset;
-					break;
-				}
-			}
-			return returnOffset;
-		}
-		
+			
 	}
 }
 /*
