@@ -54,6 +54,11 @@ namespace PINTCompiler.PINTBasic {
 			//write out CONST for the Pic resources
 			foreach (PINTBasicPic globalPic in thisApplication.Pics) {
 				WriteLine("CONST _PIC_"+ globalPic.ID + " = " + globalPic.ID);
+			}	
+
+			//write out CONST for the Music resources
+			foreach (PINTBasicMusic thisMusic in thisApplication.Musics) {
+				WriteLine("CONST _MUSIC_"+ thisMusic.ID + " = " + thisMusic.ID);
 			}			
 			
 			//write out CONST for the Text resources
@@ -62,11 +67,9 @@ namespace PINTCompiler.PINTBasic {
 			}			
 
 			//write out CONST for the Item resources
-			if (thisRoom.ID == 0) {
-				foreach (PINTBasicItem thisItem in thisApplication.Items) {
+			foreach (PINTBasicItem thisItem in thisApplication.Items) {
 					WriteLine("CONST _ITEM_"+ thisItem.ID +" = " + thisItem.ID);
-				}				
-			}
+			}				
 			WriteLine("");
 		}
 		
@@ -94,6 +97,15 @@ namespace PINTCompiler.PINTBasic {
 			
 			WriteLine("");
 		}	
+		
+		private void WriteMusics() {
+			WriteLine("'musics");
+			foreach (PINTBasicMusic thisMusic in thisApplication.Musics) {
+				WriteLine("MUSIC _MUSIC_"+ thisMusic.ID + " " + thisMusic.FileName);
+			}
+			
+			WriteLine("");
+		}		
 		
 		private void WriteTexts() {
 			WriteLine("'texts");
@@ -330,7 +342,13 @@ namespace PINTCompiler.PINTBasic {
 					RoomLoadExpression thisRoomLoad = (RoomLoadExpression) thisExpression;
 					returnString = "ROOM_LOAD " + thisRoomLoad.RoomID;
 					thisRoomLoad = null;				
-					break;					
+					break;	
+
+				case "MusicPlayExpression":
+					MusicPlayExpression thisMusicPlay = (MusicPlayExpression) thisExpression;
+					returnString = "MUSIC_PLAY _MUSIC_" + thisMusicPlay.ID;
+					thisMusicPlay = null;				
+					break;						
 			}
 			
 			return returnString;
@@ -637,6 +655,7 @@ namespace PINTCompiler.PINTBasic {
 				WriteBackdrop(thisRoom);
 				WriteHotspots(thisRoom);
 				WritePics();
+				if (thisRoom.ID == 0) WriteMusics();
 				WriteTexts();
 				if (thisRoom.ID == 0) WriteItems();
 				

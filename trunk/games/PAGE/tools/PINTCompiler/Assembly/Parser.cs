@@ -248,7 +248,27 @@ namespace PINTCompiler.Assembly {
 									} else {
 										WriteError(thisLog, thisLine, "pic identifier expected in pic declaration");
 									}
-								break;									
+								break;	
+
+								case "MUSIC":
+									if (i+1 < elements.Length) {
+										i++;
+										string musicIDText = elements[i].ToUpper();
+										int musicID = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, musicIDText);
+										if (i+1 < elements.Length) {
+											i++;
+											string musicFilePath = elements[i];
+											musicFilePath = musicFilePath.Replace("\"","");
+											thisRoom.Musics.Add (new PINTMusicEntry(musicID, musicFilePath));
+											
+										} else {
+											WriteError(thisLog, thisLine, "music file path expected in music declaration");
+										}
+										
+									} else {
+										WriteError(thisLog, thisLine, "music identifier expected in music declaration");
+									}
+								break;								
 
 								case "TEXT":
 									if (i+1 < elements.Length) {
@@ -579,7 +599,23 @@ namespace PINTCompiler.Assembly {
 									} else {
 										WriteError(thisLog, thisLine, "inventory identifier expected in inventory remove declaration");
 									}
-									break;										
+									break;	
+
+								case "MUSIC_PLAY":
+									if (i+1 < elements.Length) {
+										i++;
+										string musicIDText = elements[i].ToUpper();
+										int musicID = ResolveAsConstantOrNumber(thisRoom, thisLog, thisLine, musicIDText);
+										
+										MusicPlay thisMusicPlay = new MusicPlay(musicID);
+										if (thisLabel != "") thisMusicPlay.Label = thisLabel;
+										thisMusicPlay.Source = thisLine;
+										thisRoom.Commands.Add(thisMusicPlay);
+										thisMusicPlay = null;
+									} else {
+										WriteError(thisLog, thisLine, "music identifier expected in music play declaration");
+									}
+									break;									
 									
 								case "EVENT_END":											
 									EventEnd thisEventEnd = new EventEnd();

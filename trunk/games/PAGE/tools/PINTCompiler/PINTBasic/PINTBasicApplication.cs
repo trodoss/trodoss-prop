@@ -13,12 +13,14 @@ namespace PINTCompiler.PINTBasic {
 		public PINTBasicConstantList Constants;
 		public PINTBasicItemList Items;
 		public PINTBasicTextList Texts;
+		public PINTBasicMusicList Musics;
 		
 		private int maxConstantID;
 		private int maxVariableID;
 		private int maxPicID;
 		private int maxItemID;
 		private int maxTextID;
+		private int maxMusicID;
 		
 		public PINTBasicApplication () {
 			maxConstantID = 0;
@@ -26,12 +28,14 @@ namespace PINTCompiler.PINTBasic {
 			maxTextID = 0;
 			maxItemID = 0;
 			maxPicID = 0;
+			maxMusicID = 0;
 			this.Rooms = new PINTBasicRoomList();
 			this.Pics = new PINTBasicPicList();
 			this.Variables = new PINTBasicByteList();
 			this.Constants = new PINTBasicConstantList();
 			this.Texts = new PINTBasicTextList();
 			this.Items = new PINTBasicItemList();
+			this.Musics = new PINTBasicMusicList();
 		}
 				
 		public void AddConstant(string constantName, int constantValue) {
@@ -82,6 +86,11 @@ namespace PINTCompiler.PINTBasic {
 			} else {
 				return true;
 			}		
+		}	
+
+		public void AddMusic(string musicName, string fileName) {
+			this.Musics.Add(new PINTBasicMusic(maxMusicID, musicName, fileName));
+			maxMusicID++;		
 		}		
 	
 	}

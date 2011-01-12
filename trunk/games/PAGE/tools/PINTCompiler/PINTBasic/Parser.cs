@@ -217,7 +217,7 @@ namespace PINTCompiler.PINTBasic {
 						break;
 						
 					default:
-						//check to see if this is a PIC or a Hotspot reference
+						//check to see if this is a Pic, Hotspot, or Music reference
 						PINTBasicPic thisPic = thisApplication.Pics.FindByName(methodElements[0].ToUpper());
 						if (thisPic != null) {
 							if (methodElements.Length > 1) {
@@ -267,7 +267,23 @@ namespace PINTCompiler.PINTBasic {
 									}
 								}
 							} else {
-								WriteError(thisLog, thisLine, "Unable to resolve '"+methodElements[0].ToUpper()+"' as a valid object reference");
+								PINTBasicMusic thisMusic = thisApplication.Musics.FindByName(methodElements[0].ToUpper());
+								if (thisMusic != null) {
+									if (methodElements.Length > 1) {
+										//Music.Play() method
+										if (methodElements[1].ToUpper() == "PLAY") {		
+											if (ExpectedKeyword(elements, "(", methodElements[1].ToUpper(), thisLog, thisLine)) {
+												if (ExpectedKeyword(elements, ")", methodElements[1].ToUpper(), thisLog, thisLine)) {
+													returnExpression = new MusicPlayExpression(thisMusic.ID);
+												}
+											}
+										} else {
+											WriteError(thisLog, thisLine, "Music object does not contain the method '"+methodElements[1].ToUpper()+"'");
+										}
+									}								
+								} else {
+									WriteError(thisLog, thisLine, "Unable to resolve '"+methodElements[0].ToUpper()+"' as a valid object reference");
+								}
 							}
 						}
 						thisPic = null;
@@ -518,7 +534,8 @@ namespace PINTCompiler.PINTBasic {
 					case "BACKDROP":
 					case "BYTE":	
 					case "HOTSPOT":
-					case "ITEM":					
+					case "ITEM":	
+					case "MUSIC":
 					case "PIC":
 						break;
 															
@@ -780,6 +797,11 @@ namespace PINTCompiler.PINTBasic {
 															if (!thisApplication.AddPic(dimIdentifier, parameters[0])) WriteError(thisLog, thisLine, "maximum number of Pic resources exceeded.");
 														}
 														break;
+														
+													case "MUSIC":
+														parameters = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
+														thisApplication.AddMusic(dimIdentifier, parameters[0]);
+														break;														
 														
 													case "BYTE":
 														if (thisRoom != null) {
