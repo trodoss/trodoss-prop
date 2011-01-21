@@ -266,6 +266,24 @@ namespace PINTCompiler.PINTBasic {
 					if (thisIf.HasElseClause) {
 						lineCount = 0;
 						statementsLength = thisIf.Else.Count-1;
+						
+						//find the 'ENDIF' so that we can jump past the 'else' clause
+						for (int j = nestLevel-1; j>-1; j--) {
+							if (labelStack.FindLastIndexByID(j) > -1) {
+								string gotoLabel = labelStack[labelStack.FindLastIndexByID(j)].Name;
+								WriteLine("CODE_GOTO "+ gotoLabel);
+								thisLabel = null;
+								break;
+							}
+						}						
+						
+						//int ifLabelIndex = labelStack.FindLastIndexByID(nestLevel-1);
+						//if (ifLabelIndex > -1) {
+						//	thisLabel = (PINTBasicLabel) labelStack[ifLabelIndex];
+						//	WriteLine("CODE_GOTO "+ thisLabel.Name);
+						//	thisLabel = null;
+						//}
+													
 						foreach (PINTBasicStatement elseStatement in thisIf.Else) {
 							if (lineCount == statementsLength) nestHasNextLine = false;
 							
@@ -539,6 +557,7 @@ namespace PINTCompiler.PINTBasic {
 			GlobalVariableExpression globalVariableExpression;
 			ConstantExpression constantExpression;
 			LiteralExpression literalExpression;
+			ItemReferenceExpression itemReferenceExpression;
 			
 			switch (thisExpression.Left.GetType().Name) {
 				case "RoomVariableExpression":
@@ -582,6 +601,12 @@ namespace PINTCompiler.PINTBasic {
 					rightExpression = literalExpression.Value + " ";
 					literalExpression = null;
 					break;
+					
+				case "ItemReferenceExpression":
+					itemReferenceExpression = (ItemReferenceExpression) thisExpression.Right;
+					rightExpression = "_ITEM_" + itemReferenceExpression.ID + " ";
+					itemReferenceExpression = null;
+					break;					
 			}
 			
 			string operatorValue = "";
