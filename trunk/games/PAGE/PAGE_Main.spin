@@ -4,7 +4,7 @@ PAGE interpereter
 2011 - trodoss, roadster
 
    Special Thanks to:
-    roadster, Oldbitcollector, Doug Dingus, Potatohead, Ariba, Baggers, lft,
+    roadster, Oldbitcollector, Cardboardguru, Potatohead, Ariba, Baggers, lft,
     Unsoundcode, Chris Savage (SavageCircuits.com)
 
 Version History:
@@ -13,6 +13,7 @@ Version History:
          trodoss: added item/inventory handling
 - 0.3 -  trodoss: integration of gm_synth
         roadster: integration of MIGS code (input)
+- 0.4 -  trodoss: UI improvements
 
 
 See the bottom of the code for terms of use.
@@ -209,7 +210,8 @@ VAR
 
   byte sub_action                                      'sub action on the menu
 
-  long  time, tq, ts, us                               'MIDI vars
+  long time, tq, ts, us                                'MIDI vars
+  long wait_cnt
       
 OBJ
     tv   : "mashed_potatos_PAGE"
@@ -417,6 +419,9 @@ pub Cls | k
   BYTEFILL(@displayb + 6400, $02, 1280)
      
 '***************** Menu Functions ***********************
+pub UpdateSelect
+   DrawChar(select_x,select_y,$1E,$AD)
+
 pub DrawOptionsMenu
    CLS
    Print(4,86,string("USE"),$AD)
@@ -428,11 +433,18 @@ pub DrawOptionsMenu
    Print(64,86,string("SAVE"),$AD)
    Print(64,91,string("QUIT"),$AD)
 
-   DrawChar(select_x,select_y,$1E,$AD)
+   UpdateSelect
 
-pub DrawInventoryMenu(action) | curr_x, curr_y, ptr, i
+pub DrawInventoryMenu(action)
    sub_action := action
-   CLS
+   select_x := 0
+   select_y := 86
+   select_val := 0
+   UpdateInventoryMenu
+   FOCUS := FOCUS_ITEM_MENU
+
+pub UpdateInventoryMenu | curr_x, curr_y, ptr, i
+   Cls
    if (sub_action == on_use)
        Print(0,81,string("USE"),$AD)
    else
@@ -457,7 +469,8 @@ pub DrawInventoryMenu(action) | curr_x, curr_y, ptr, i
            Print(curr_x,curr_y,@filenb,$AD)
         curr_x += 20
 
-   DrawChar(select_x,select_y,$1E,$AD)
+   UpdateSelect
+
 
 pub HandleRoom
     if in_event
@@ -534,25 +547,26 @@ pub HandleOptionsMenu
           case select_val
              'TAKE selected
              0:
+               focus := FOCUS_ROOM
                Start_Event(on_take)
 
              'USE selected
              1:
                DrawInventoryMenu(on_use)
-               FOCUS := FOCUS_ITEM_MENU
 
              'TALK selected
              2:
+               focus := FOCUS_ROOM
                Start_Event(on_talk)
 
              'LOOK selected
              3:
+               focus := FOCUS_ROOM
                Start_Event(on_look)
 
              'GIVE selected
              4:
                DrawInventoryMenu(on_give)
-               FOCUS := FOCUS_ITEM_MENU
 
              'LOAD selected
              5:
@@ -566,7 +580,6 @@ pub HandleOptionsMenu
              7:
                Print(4,82,string("ON SAVE"),$AD)
 
-          focus := FOCUS_ROOM
 
 pub HandleInventoryMenu | ptr, var_ptr
    if(key.Select)       '--now "a" key
@@ -577,25 +590,25 @@ pub HandleInventoryMenu | ptr, var_ptr
       if (select_y == 91)
           select_y := 86
           select_val-=4
-          DrawOptionsMenu
+          UpdateInventoryMenu
 
    if(key.Player1_Down == 1)       'Down Arrow
       if (select_y == 86)
           select_y := 91
           select_val+= 4
-          DrawOptionsMenu
+          UpdateInventoryMenu
 
    if(key.Player1_Left == 1)       'Left Arrow
       if (select_x > 0)
           select_x-= 20
           select_val--
-          DrawOptionsMenu
+          UpdateInventoryMenu
 
    if(key.Player1_Right == 1)       'Right Arrow
       if (select_x =< 60)
           select_x+= 20
           select_val++
-          DrawOptionsMenu
+          UpdateInventoryMenu
 
    if(key.Player1_Fire == 1)       'Enter key
       if select_val < inv_cnt
@@ -766,7 +779,7 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
         code_ptr += 4
 
      CMD_END:
-       in_event := false
+        in_event := false
 
 pub CheckHotspot (hot_id) | ptr, met
    met := false
@@ -808,8 +821,14 @@ pub ShowSay (text_ptr) | ptr
    CLS
    Print(0,86,ptr,$07)
    focus := FOCUS_SAY
+   wait_cnt := 0
        
 pub HandleSay
+   wait_cnt++
+   if (wait_cnt > 32)
+      Cls
+      focus := FOCUS_ROOM
+
    if(key.Player1_Fire == 1)       'Enter key
       Cls
       focus := FOCUS_ROOM

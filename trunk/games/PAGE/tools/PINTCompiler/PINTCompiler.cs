@@ -60,7 +60,7 @@ namespace PINTCompiler {
 									//special processing for roomID 0 (startup room) - generate the item file and process MIDI files
 									if (thisRoom.RoomID == 0) {
 										Assembly.PINTItemFile thisItemFile = new Assembly.PINTItemFile();
-										thisItemFile.Save("0.IM", thisRoom.Items, thisLog);
+										thisItemFile.Save("0.IT", thisRoom.Items, thisLog);
 										thisItemFile = null;
 										
 										Assembly.PINTMIDIFileWriter thisMIDIWriter = new Assembly.PINTMIDIFileWriter();

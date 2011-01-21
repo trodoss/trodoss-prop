@@ -77,7 +77,13 @@ namespace PINTCompiler.PINTBasic {
 							returnExpression = new RoomVariableExpression(testByte.ID);
 							testByte = null;
 						} else {
-							WriteError(thisLog, thisLine, "unable to resolve '"+thisElement+"' as a valid expression element");
+							PINTBasicItem testItem = thisApplication.Items.FindByName(thisElement);
+							if (testItem != null) {
+								returnExpression = new ItemReferenceExpression(testItem.ID);
+								testItem = null;
+							} else {
+								WriteError(thisLog, thisLine, "unable to resolve '"+thisElement+"' as a valid expression element");
+							}
 						}
 					}
 				}
@@ -612,15 +618,17 @@ namespace PINTCompiler.PINTBasic {
 														PINTBasicIf thisIf = null;
 														if (thisIfCondition != null) thisIf = new PINTBasicIf(thisLine, thisIfCondition);
 														if (thisMethodIfCondition != null) thisIf = new PINTBasicIf(thisLine, thisMethodIfCondition);
-														ArrayList ifCollection = ParseStatements(thisLog, lines, "ELSE","IF");
-														thisIf.Met = (PINTBasicStatementList) ifCollection[0];
-														if (ifCollection.Count > 1) {
-															thisIf.HasElseClause = true;
-															thisIf.Else = (PINTBasicStatementList) ifCollection[1];
+														if (thisIf != null) {
+															ArrayList ifCollection = ParseStatements(thisLog, lines, "ELSE","IF");
+															thisIf.Met = (PINTBasicStatementList) ifCollection[0];
+															if (ifCollection.Count > 1) {
+																thisIf.HasElseClause = true;
+																thisIf.Else = (PINTBasicStatementList) ifCollection[1];
+															}
+															ifCollection = null;
+															returnList.Add(thisIf);
+															thisIf = null;
 														}
-														ifCollection = null;
-														returnList.Add(thisIf);
-														thisIf = null;
 													}
 												}
 											}
