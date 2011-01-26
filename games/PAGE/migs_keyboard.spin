@@ -54,9 +54,11 @@ PUB Player1_Down
     if(key.keystate($C3))
        return (1)
 
-PUB Player1_Fire
+PUB Player1_Fire | temp_value
 
     if(key.keystate($0D))
+       repeat while(key.keystate($0D))
+         temp_value := 1 'JT_Cook: this is just to do something while in repeat loop
        return (1)
 
 PUB Player2_Right
