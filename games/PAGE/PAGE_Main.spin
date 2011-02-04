@@ -1,11 +1,11 @@
 {{
 PAGE interpereter 
 
-2011 - trodoss, roadster
+2011 - trodoss, roadster, JTCook
 
    Special Thanks to:
-    roadster, Oldbitcollector, Cardboardguru, Potatohead, Ariba, Baggers, lft,
-    Unsoundcode, Chris Savage (SavageCircuits.com)
+    roadster, JTCook, Oldbitcollector, Cardboardguru, Potatohead, Ariba, Baggers, lft,
+    Unsoundcode, Chris Savage (and SavageCircuits.com)
 
 Version History:
 - 0.1 -  trodoss: initial release
@@ -14,6 +14,8 @@ Version History:
 - 0.3 -  trodoss: integration of gm_synth
         roadster: integration of MIGS code (input)
 - 0.4 -  trodoss: UI improvements
+- 0.5 -   JTCook: input fixes, graphics handling fixes
+         trodoss: added load/save functionality
 
 
 See the bottom of the code for terms of use.
@@ -136,6 +138,7 @@ CON
   FILE_TYPE_IT   = 0
   FILE_TYPE_RM   = 1
   FILE_TYPE_MID  = 2
+  FILE_TYPE_SAV  = 3
 
   'position in the event table of each event location
   on_load     = 0
@@ -148,6 +151,10 @@ CON
   on_hotspot2 = 14
   on_hotspot3 = 16
   on_hotspot4 = 18
+
+  'file menu actions
+  file_load   = 0
+  file_save   = 1
 
   INDEX_HOTSPOT     = 20 'start of the hotspot data
   
@@ -195,6 +202,7 @@ VAR
                                                        'an event
 
   byte last_room                                       'store the last room visited
+  byte cur_room                                        'store the current room
   byte inv_cnt                                         'current inventory count
                                                        
   byte player_x
@@ -208,7 +216,7 @@ VAR
   byte select_y
   byte select_val
 
-  byte sub_action                                      'sub action on the menu
+  byte sub_action                                      'sub action on the menu (for inventory/file menus)
 
   long time, tq, ts, us                                'MIDI vars
   long wait_cnt
@@ -236,7 +244,7 @@ PUB Main
    LoadItems
 
    last_room := 0
-   LoadRoom(0)
+   LoadRoom(0, false)
    
    tv.start(@displayb, _VCFG, _DIRA)
          
@@ -252,6 +260,9 @@ PUB Main
 
          FOCUS_ITEM_MENU:
            HandleInventoryMenu
+
+         FOCUS_FILE_MENU:
+           HandleFileMenu
 
          FOCUS_SAY:
            HandleSay
@@ -362,31 +373,30 @@ PUB DrawNumAt (x, y, value) | i, pos
               DrawChar(pos+=4, y, 16, $AD)
            i /= 10
 
-pub DrawSprite(x,y,n,mirrored) | ptr,sx,sy
-'   ptr := @spr_info + (n * 128)
-    ptr := @picb + (n*128)
-
-   sx := x
-   if mirrored > 0
-      sx += 8
-       
-   sy := y
-
+pub DrawSprite(x,y,n,mirrored) | ptr, screen_ptr
+   ptr := @picb + (n<<7)
+   ''find location in screen memory to start sprite
+   screen_ptr:=y * HORIZONTAL_PIXELS+x
    repeat 16
-     sx := x
-     if mirrored > 0
-        sx += 8
-         
-     repeat 8   
+     ''break it up into mirrored or not mirrored so we are only checking every line instead
+     '' of every pixel for speed up
+     if(mirrored)
+      screen_ptr+=8
+      repeat 8
         if byte[ptr] > $02
-           plot(sx,sy,byte[ptr])
-
-        if mirrored > 0
-          sx--
-        else
-          sx++   
+             displayb[screen_ptr] := byte[ptr]
         ptr++
-     sy++
+        screen_ptr--
+
+     else
+      repeat 8
+        if byte[ptr] > $02
+             displayb[screen_ptr] := byte[ptr]
+        ptr++
+        screen_ptr++
+      screen_ptr-=8
+     screen_ptr+=HORIZONTAL_PIXELS 'next line
+
      
 pub CheckPlayerMove(movex, movey) | blocked
     'assume we are not blocked, until we have checked
@@ -405,12 +415,13 @@ pub CheckPlayerMove(movex, movey) | blocked
 pub GetBackground(x,y,b) | i
 
    repeat i from 0 to 15
-     BYTEMOVE(@backb[i*8]+(b*BACK_SIZE), screen(x,y+i), 8)
+     BYTEMOVE(@backb[i<<3]+(b<<7), screen(x,y+i), 8)
+
 
 pub RestoreBackground(x,y,b) | i
 
    repeat i from 0 to 15
-     BYTEMOVE(screen(x,y+i), @backb[i*8]+(b*BACK_SIZE), 8)
+     BYTEMOVE(screen(x,y+i), @backb[i<<3]+(b<<7), 8)
 
 pub Screen(x,y)
   result := @displayb +(y*HORIZONTAL_PIXELS)+x
@@ -471,6 +482,34 @@ pub UpdateInventoryMenu | curr_x, curr_y, ptr, i
 
    UpdateSelect
 
+pub DrawFileMenu(action)
+   sub_action := action
+   select_x := 0
+   select_y := 86
+   select_val := 0
+   UpdateFileMenu
+   FOCUS := FOCUS_FILE_MENU
+
+pub UpdateFileMenu | curr_x, curr_y, ptr, i
+   Cls
+   if (sub_action == file_load)
+       Print(0,81,string("LOAD"),$AD)
+   else
+       Print(0,81,string("SAVE"),$AD)
+
+   curr_x := 4
+   curr_y := 86
+   repeat i from 1 to 4
+     DrawNumAt(curr_x, curr_y, i)
+     curr_x += 20
+
+   curr_x := 4
+   curr_y := 91
+   repeat i from 5 to 8
+     DrawNumAt(curr_x, curr_y, i)
+     curr_x += 20
+
+   UpdateSelect
 
 pub HandleRoom
     if in_event
@@ -537,7 +576,7 @@ pub HandleOptionsMenu
           DrawOptionsMenu
    
    if(key.Player1_Right == 1)       'Right Arrow
-      if (select_x =< 60)
+      if (select_x < 60)
           select_x+= 20
           select_val+=2
           DrawOptionsMenu
@@ -570,15 +609,15 @@ pub HandleOptionsMenu
 
              'LOAD selected
              5:
-               Print(4,82,string("ON LOAD"),$AD)
+               DrawFileMenu(file_load)
 
              'QUIT selected
              6:
-               Print(4,82,string("ON QUIT"),$AD)
+               reboot
 
              'SAVE selected
              7:
-               Print(4,82,string("ON SAVE"),$AD)
+               DrawFileMenu(file_save)
 
 
 pub HandleInventoryMenu | ptr, var_ptr
@@ -605,7 +644,7 @@ pub HandleInventoryMenu | ptr, var_ptr
           UpdateInventoryMenu
 
    if(key.Player1_Right == 1)       'Right Arrow
-      if (select_x =< 60)
+      if (select_x < 60)
           select_x+= 20
           select_val++
           UpdateInventoryMenu
@@ -621,6 +660,52 @@ pub HandleInventoryMenu | ptr, var_ptr
       focus := FOCUS_ROOM
       'initiate the event that was specified prior
       Start_Event(sub_action)
+
+pub HandleFileMenu | ptr, var_ptr
+   if(key.Select)       '--now "a" key
+      Cls
+      focus := FOCUS_ROOM
+
+   if(key.Player1_Up == 1)       'Up Arrow
+      if (select_y == 91)
+          select_y := 86
+          select_val-=4
+          UpdateFileMenu
+
+   if(key.Player1_Down == 1)       'Down Arrow
+      if (select_y == 86)
+          select_y := 91
+          select_val+= 4
+          UpdateFileMenu
+
+   if(key.Player1_Left == 1)       'Left Arrow
+      if (select_x > 0)
+          select_x-= 20
+          select_val--
+          UpdateFileMenu
+
+   if(key.Player1_Right == 1)       'Right Arrow
+      if (select_x < 60)
+          select_x+= 20
+          select_val++
+          UpdateFileMenu
+
+   if(key.Player1_Fire == 1)       'Enter key
+      if (sub_action == file_load)
+        LoadGame(select_val)
+
+        'load in the current room
+        LoadRoom(cur_room, true)
+
+        'trigger the drawing of the player (if visible)
+        if (player_visible)
+           DrawPlayer
+
+      else
+        SaveGame(select_val)
+
+      Cls
+      focus := FOCUS_ROOM
 
 '***************** Room Load  *********************** 
 pub Start_Event (event_ptr) | ptr
@@ -729,7 +814,7 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
         code_ptr := @codeb + byte[code_ptr + 2]
         
      CMD_ROOM_LOAD:
-         LoadRoom(word[code_ptr +2])
+         LoadRoom(word[code_ptr +2], false)
         
      CMD_HOT_TEST:
         met := CheckHotspot(byte[code_ptr + 2])
@@ -833,14 +918,15 @@ pub HandleSay
       Cls
       focus := FOCUS_ROOM
 
-pub LoadRoom(roomid) | i, ptr
+pub LoadRoom(roomid, from_file) | i, ptr
    GetFileName(roomid, FILE_TYPE_RM)
    i:=sd.popen(@filenb, "r")
 
    sd.pread(@displayb, BACKDROP_SIZE)
    Cls
-   'clear out local variables
-   bytefill(@varb+8,0, 8)
+
+   'set the current room id
+   cur_room := roomid
 
    'store last room variable
    ptr := @varb
@@ -853,18 +939,24 @@ pub LoadRoom(roomid) | i, ptr
    sd.pread(@codeb, CODE_BUF_SIZE)
    sd.pclose
 
-   'initialize the player variables
-   player_x := 0
-   player_y := 0
-   player_step := 0
-   player_dir := DIR_SOUTH
-   player_visible := false
-
+   'set the focus to the room
    focus := FOCUS_ROOM
-   last_room := roomid
 
-   'start On_Load event
-   Start_Event(on_load)
+   if (from_file == false)
+      'clear out local variables
+      bytefill(@varb+8,0, 8)
+
+      'initialize the player variables
+      player_x := 0
+      player_y := 0
+      player_step := 0
+      player_dir := DIR_SOUTH
+      player_visible := false
+
+      last_room := roomid
+
+      'start On_Load event
+      Start_Event(on_load)
 
 pub LoadItems | i
   GetFileName(0, FILE_TYPE_IT)
@@ -900,6 +992,11 @@ pub GetFileName(value, type)| ptr, i
        byte[ptr++] := "M"
        byte[ptr++] := "I"
        byte[ptr++] := "D"
+
+     FILE_TYPE_SAV:
+       byte[ptr++] := "S"
+       byte[ptr++] := "A"
+       byte[ptr++] := "V"
 
 pub GetItemName(itemid) | ptr
   bytefill(@filenb, 0, 12)
@@ -1011,6 +1108,50 @@ pub MusicPlay(songid) | lg, dt, b, v, st, d1, d2, ch
     synth.allOff
   else
    'File not found
+
+PUB SaveGame (fileid) | i
+   GetFileName(fileid, FILE_TYPE_SAV)
+   i:=sd.popen(@filenb, "w")
+
+   'Write out internal variables
+   sd.pputc(last_room)
+   sd.pputc(cur_room)
+   sd.pputc(inv_cnt)
+   sd.pputc(player_x)
+   sd.pputc(player_y)
+   sd.pputc(player_step)
+   sd.pputc(player_dir)
+   sd.pputc(player_visible)
+
+   'write out the variable buffer
+   sd.pwrite(@varb, VAR_BUF_SIZE)
+
+   'write out the inventory buffer
+   sd.pwrite(@invb, INVENTORY_BUF_SIZE)
+
+   sd.pclose
+
+PUB LoadGame (fileid) | i
+   GetFileName(fileid, FILE_TYPE_SAV)
+   i:=sd.popen(@filenb, "r")
+
+   'read in internal variables
+   last_room := sd.pgetc
+   cur_room := sd.pgetc
+   inv_cnt := sd.pgetc
+   player_x := sd.pgetc
+   player_y := sd.pgetc
+   player_step := sd.pgetc
+   player_dir := sd.pgetc
+   player_visible := sd.pgetc
+
+   'read in the variable buffer
+   sd.pread(@varb, VAR_BUF_SIZE)
+
+   'read in the inventory buffer
+   sd.pread(@invb, INVENTORY_BUF_SIZE)
+
+   sd.pclose
 
 DAT
 
