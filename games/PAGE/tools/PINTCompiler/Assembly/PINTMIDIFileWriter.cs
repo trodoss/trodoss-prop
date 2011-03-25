@@ -33,9 +33,9 @@ namespace PINTCompiler.Assembly {
 		/// <sumary>
 		/// Main (entrypoint)	
 		/// </sumary>
-		public void Process(PINTMusicEntryList thisList, CompilationLog thisLog) {
+		public void Process(PINTMusicEntryList thisList, string outputFilePath, CompilationLog thisLog) {
 			foreach (PINTMusicEntry thisMusic in thisList) {
-				MIDIFileState thisState = Write(thisMusic.FileName, thisMusic.MusicID);
+				MIDIFileState thisState = Write(thisMusic.FileName, outputFilePath, thisMusic.MusicID);
 				switch (thisState) {
 					case MIDIFileState.Valid:
 						thisLog.AddInformation("", 0, "MIDI File: " + thisMusic.FileName + " processed as: " + thisMusic.MusicID +".MID");
@@ -60,11 +60,12 @@ namespace PINTCompiler.Assembly {
 			}
 		}
 		
-		public MIDIFileState Write(string source, int id) {
+		public MIDIFileState Write(string source, string outputFilePath, int id) {
 			MIDIFileState returnState = Validate(source);
 			if (returnState == MIDIFileState.Valid) {
-				string newFilename = id.ToString() + ".MID";
-				File.Copy(source, newFilename, true);
+				string newFilename = "\\" + id.ToString() + ".MID";
+				
+				File.Copy(source, outputFilePath + newFilename, true);
 			}
 			return returnState;
 		}

@@ -23,13 +23,13 @@ namespace PINTCompiler.Utilities {
 			thisLog.AddInformation(source, lineNumber, message);
 		}
 		
-		public static SourceLineList Preprocess(string fileName, CompilationLog thisLog) {
+		public static SourceLineList Preprocess(string fileName, string filePath, CompilationLog thisLog) {
 			SourceLineList lines = new SourceLineList();
 			
 			WriteInformation(fileName, thisLog, 0, "Pre-processing file file \"" + fileName + "\"");
 			Hashtable constants = new Hashtable();
 			
-			using (StreamReader streamReader = new StreamReader(fileName)) {
+			using (StreamReader streamReader = new StreamReader(filePath +"\\"+ fileName)) {
 				int lineNumber = 0;
 				string lineData;
 					
@@ -99,7 +99,7 @@ namespace PINTCompiler.Utilities {
 											includeFilePath = includeFilePath.Replace("<","");
 											includeFilePath = includeFilePath.Replace(">","");
 											
-											SourceLineList includeLines = Preprocessor.Preprocess(includeFilePath, thisLog);
+											SourceLineList includeLines = Preprocessor.Preprocess(includeFilePath, filePath, thisLog);
 											if (includeLines.Count > 0) {
 												foreach (SourceLine includeLine in includeLines) {
 													lines.Add(includeLine);

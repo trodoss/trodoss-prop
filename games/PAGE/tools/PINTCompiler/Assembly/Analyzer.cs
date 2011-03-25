@@ -61,7 +61,7 @@ namespace PINTCompiler.Assembly {
 			
 			//to do: go trough each string and calculate their offset from the start of the data, which is used when a string is referenced.
 			int stringOffset = thisRoom.Offset + (4 * thisRoom.Commands.Count);
-			if (stringOffset > 512) WriteError (thisLog, "Resulting output (before string data is included) would exceed the 512 byte limit for room data.");
+			if (stringOffset > 1024) WriteError (thisLog, "Resulting output (before string data is included) would exceed the 1024 byte limit for room data.");
 			
 			for (int i=0; i< thisRoom.Strings.Count; i++) {
 				PINTString thisString = (PINTString) thisRoom.Strings[i];
@@ -69,7 +69,7 @@ namespace PINTCompiler.Assembly {
 				
 				//add in the string's length to increment the offset to the next entry (accounting for the null at the end)
 				stringOffset += thisString.Bytes.Length;
-				if (stringOffset > 512) WriteError (thisLog, "Resulting output (with string data included) would exceed the 512 byte limit for room data.");
+				if (stringOffset > 1024) WriteError (thisLog, "Resulting output (with string data included) would exceed the 1024 byte limit for room data.");
 			}
 			
 			return thisRoom;

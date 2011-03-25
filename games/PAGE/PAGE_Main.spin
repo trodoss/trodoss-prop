@@ -16,6 +16,8 @@ Version History:
 - 0.4 -  trodoss: UI improvements
 - 0.5 -   JTCook: input fixes, graphics handling fixes
          trodoss: added load/save functionality
+- 0.6 -  trodoss: increased pic/code resource size
+                  adjusted hotspot check to lower left of player         
 
 
 See the bottom of the code for terms of use.
@@ -132,7 +134,7 @@ CON
 
   BACKDROP_SIZE  = 6400
   
-  CODE_BUF_SIZE  = 512
+  CODE_BUF_SIZE  = 1024
 
   'file type indicators
   FILE_TYPE_IT   = 0
@@ -295,11 +297,11 @@ pub DrawPlayer | img, mirror, hot
        img := 2
        if player_step == 1
           img := 3
-
+          
      DIR_WEST:
        img := 2
        if player_step == 1
-          img := 3
+          img := 3         
        mirror := 1   
 
    DrawSprite(player_x,player_y,img,mirror)
@@ -866,13 +868,15 @@ pub Interpret_Next_Command | vptr, vptr2, op, met
      CMD_END:
         in_event := false
 
-pub CheckHotspot (hot_id) | ptr, met
+pub CheckHotspot (hot_id) | ptr, met, test_y
    met := false
+   'adjust to look at the bottom left of the player
+   test_y := player_y + 16
    ptr:= @codeb + INDEX_HOTSPOT + (hot_id * HOTSPOT_SIZE)
    if (player_x > byte[ptr][HOTSPOT_X])
      if (player_x < (byte[ptr][HOTSPOT_X] + byte[ptr][HOTSPOT_W]))
-        if (player_y > byte[ptr][HOTSPOT_Y])
-           if (player_y < (byte[ptr][HOTSPOT_Y] + byte[ptr][HOTSPOT_H]))
+        if (test_y > byte[ptr][HOTSPOT_Y])
+           if (test_y < (byte[ptr][HOTSPOT_Y] + byte[ptr][HOTSPOT_H]))
               met := true
    return met
 
@@ -1317,7 +1321,7 @@ font    byte %00000000 '(space)
         byte %01101000 'G
         byte %10100110
 
-        byte %10001110 'H
+        byte %10101110 'H
         byte %10101010
 
         byte %11100100 'I
@@ -1333,7 +1337,7 @@ font    byte %00000000 '(space)
         byte %10001110
 
         byte %10101110 'M
-        byte %10101010
+        byte %11101010
 
         byte %01101010 'N
         byte %10101010

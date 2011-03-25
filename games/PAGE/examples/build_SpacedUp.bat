@@ -1,0 +1,1 @@
+..\tools\bin\PINTCompiler.exe SpacedUp\*.bas

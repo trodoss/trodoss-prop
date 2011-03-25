@@ -1,0 +1,1 @@
+..\tools\bin\PINTCompiler.exe Example1\*.bas
