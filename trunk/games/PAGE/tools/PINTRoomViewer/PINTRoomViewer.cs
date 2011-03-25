@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -222,10 +223,12 @@ namespace PINTBasic.Utilities {
                     return;
 			} else {
                 try{
+					string directoryPath = Path.GetDirectoryName(ofn.FileName) + "\\";
+					 
 					CompilationLog thisLog = new CompilationLog();
-					SourceLineList lines = Preprocessor.Preprocess(ofn.FileName, thisLog);
+					SourceLineList lines = Preprocessor.Preprocess(Path.GetFileName(ofn.FileName), directoryPath, thisLog);
 					PINTCompiler.PINTBasic.Parser parser = new PINTCompiler.PINTBasic.Parser();
-					thisApplication = parser.Parse(thisLog, lines);
+					thisApplication = parser.Parse(thisLog, directoryPath, lines);
 					parser = null;		
 					if (!thisLog.CanContinue) {
 						thisApplication = null;

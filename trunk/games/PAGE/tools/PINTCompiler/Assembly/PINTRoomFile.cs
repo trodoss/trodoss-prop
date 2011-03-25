@@ -68,7 +68,7 @@ namespace PINTCompiler.Assembly {
 					thisLog.AddInformation("", 0, "Adding backdrop \"" + thisRoom.Backdrop.FilePath + "\" to room file");
 					PINTBitmapWriter.Write(thisRoom.Backdrop.FilePath, binaryWriter, 80, 80);
 					
-					//write out any PIC (128 bytes) entries (max 6 = 768 bytes)
+					//write out any PIC (128 bytes) entries (max 9 = 1024 bytes)
 					thisLog.AddInformation("", 0, "Pic count: " + thisRoom.Pics.Count);
 					foreach (PINTPicEntry thisPic in thisRoom.Pics) {
 						thisLog.AddInformation("", 0, "Adding pic \"" + thisPic.FilePath + "\" to room file");
@@ -80,8 +80,8 @@ namespace PINTCompiler.Assembly {
 						binaryWriter.Write((byte)0);
 					}					
 			
-					//the code is allocate 512 bytes of space
-					int bytesLeft = 512;
+					//the code is allocate 1024 bytes of space
+					int bytesLeft = 1024;
 					
 					foreach (int thisEntry in thisRoom.EventTableEntries) {
 						binaryWriter.Write((short)thisEntry);

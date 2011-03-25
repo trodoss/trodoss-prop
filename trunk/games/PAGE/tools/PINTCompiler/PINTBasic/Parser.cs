@@ -15,6 +15,7 @@ namespace PINTCompiler.PINTBasic {
 		private bool endOfSource = false;
 		private int i = 0;
 		private int currentLine = 0;
+		private string _filePath = "";
 		
 		private void WriteError(CompilationLog thisLog, SourceLine thisLine, string message) {
 			thisLog.CanContinue = false;
@@ -714,7 +715,8 @@ namespace PINTCompiler.PINTBasic {
 			return returnArray;
 		}
 		
-		public PINTBasicApplication Parse(CompilationLog thisLog, SourceLineList lines) {
+		public PINTBasicApplication Parse(CompilationLog thisLog, string filePath, SourceLineList lines) {
+			_filePath = filePath;
 			thisApplication = new PINTBasicApplication();
 			thisRoom = null;
 			canContinue = true;
@@ -778,7 +780,7 @@ namespace PINTCompiler.PINTBasic {
 														if (parameters[0] != null) {
 															if (thisRoom != null) {
 																if (thisRoom.Backdrop == null) {
-																	thisRoom.Backdrop = new PINTBasicBackdrop(0, dimIdentifier, parameters[0]);
+																	thisRoom.Backdrop = new PINTBasicBackdrop(0, dimIdentifier, _filePath +"\\"+ parameters[0]);
 																} else {
 																	WriteError(thisLog, thisLine, "backdrop resources cannot be defined more than once in a Room object");
 																}
@@ -802,13 +804,13 @@ namespace PINTCompiler.PINTBasic {
 													case "PIC":
 														parameters = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
 														if (parameters[0] != null) {
-															if (!thisApplication.AddPic(dimIdentifier, parameters[0])) WriteError(thisLog, thisLine, "maximum number of Pic resources exceeded.");
+															if (!thisApplication.AddPic(dimIdentifier, _filePath +"\\"+ parameters[0])) WriteError(thisLog, thisLine, "maximum number of Pic resources exceeded.");
 														}
 														break;
 														
 													case "MUSIC":
 														parameters = ExpectedObjectAssignment(elements, element, thisLog, thisLine);
-														thisApplication.AddMusic(dimIdentifier, parameters[0]);
+														thisApplication.AddMusic(dimIdentifier, _filePath +"\\"+ parameters[0]);
 														break;														
 														
 													case "BYTE":

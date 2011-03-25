@@ -20,7 +20,7 @@ namespace PINTCompiler {
 		/// <sumary>
 		/// Retrieves the version text 
 		/// </sumary>
-		private static string VersionText() { return "v0.3"; }
+		private static string VersionText() { return "v0.4"; }
 			
 			
 		//*********** P U B L I C   F U N C T I O N S  ( M E T H O D S ) ******
@@ -28,24 +28,132 @@ namespace PINTCompiler {
 		/// Main (entrypoint)	
 		/// </sumary>
 		public static void Main(string[] arguments) {
-			string fileName = "";
-			bool generateILfile = true;
+			bool generateILfile = false;
+			bool showHelp = false;
+			bool canContinue = true;
+			int errorLevel = 1;
+			string sourceFilePath = "";
+			string outputFilePath = "";
 			
 			if (arguments.Length > 0) {
-				fileName = arguments[0];
 				CompilationLog thisLog = new CompilationLog();
+								
+				//examine the rest of the arguments being specified to determine what flags need to be set
+				if (arguments.Length > 0) {
+					foreach (string thisArgument in arguments) {
+	
+						if (thisArgument.Length > 0) {
+							if (thisArgument.Substring(0,1) == "/") {
+								if (thisArgument.Length > 1) {
+									switch (thisArgument.Substring(1,1).ToLower()) {
+										case "i":
+											generateILfile = true;
+											break;
+											
+										case "e":
+											if (thisArgument.Length > 2) {
+												string errorLevelText = thisArgument.Substring(2,1);
+												try {
+													errorLevel = Convert.ToInt32(errorLevelText);
+													if ((errorLevel < 0) || (errorLevel > 2)) canContinue = false;
+												} catch {
+													canContinue = false;
+												}
+											} else {
+												canContinue = false;
+											}
+											break;
+											
+										case "?":
+											showHelp = true;
+											break;
+											
+										default:
+											canContinue = false;
+											break;
+									}
+								} else {
+									canContinue = false;
+								}
+							} else {
+								if (sourceFilePath == "") {
+									sourceFilePath = thisArgument;
+								} else {
+									if (outputFilePath == "") {
+										outputFilePath = thisArgument;
+									} else {
+										//more than that, and it is an error
+										canContinue = false;
+									}
+								}
+							}
+						} else {
+							canContinue = false;
+						}
+						
+						if (!canContinue) {
+							Console.WriteLine("PINTCompiler " + VersionText() + " - invalid argument '" + thisArgument + "' ");
+							ShowHelp();
+							break;
+						}
+					}
+				}
 				
-				SourceLineList lines = Preprocessor.Preprocess(fileName, thisLog);
+				//if we have passed the filename/parameter checks, try to compile the files with the specified settings
+				if (showHelp) {
+					ShowHelp();
+				} else {
+					if (canContinue) {
+						string sourceRootPath = "";
+						string outputRootPath = "";
+						
+						if (!Path.IsPathRooted(sourceFilePath)) {
+							sourceRootPath = Directory.GetCurrentDirectory();
+							sourceRootPath += "\\" + Path.GetDirectoryName(sourceFilePath);
+						} else {
+							sourceRootPath = Path.GetDirectoryName(sourceFilePath);
+						}
+
+						if (!Path.IsPathRooted(outputFilePath)) {
+							outputRootPath = Directory.GetCurrentDirectory();
+							if (outputFilePath != "") outputRootPath += "\\" + Path.GetDirectoryName(outputFilePath);
+						} else {
+							outputRootPath = Path.GetDirectoryName(outputRootPath);
+						}					
+						
+						//determine the filenames for the files being compiled
+						DirectoryInfo di = new DirectoryInfo(sourceRootPath);
+						FileInfo[] fileInfo = di.GetFiles(Path.GetFileName(sourceFilePath));
+				
+						//compile each of the  file(s) being specified
+						foreach (FileInfo fi in fileInfo) {
+							CompileFile (fi.Name, sourceRootPath, outputRootPath + "\\", generateILfile, thisLog);
+							if (!thisLog.CanContinue) break;
+						}
+					}
+					
+					//list out the log entries from compilation
+					ListLogEntries(thisLog, errorLevel);
+				}
+								
+			} else {
+				Console.WriteLine("PINTCompiler " + VersionText() + " - no file name specified. ");
+				ShowHelp();
+			}
+		}
+		
+		public static void CompileFile(string fileName, string sourceFilePath, string outputFilePath, bool generateILFile, CompilationLog thisLog) {
+				SourceLineList lines = Preprocessor.Preprocess(fileName, sourceFilePath, thisLog);
 				PINTBasic.Parser parser = new PINTBasic.Parser();
-				PINTBasicApplication thisApplication = parser.Parse(thisLog, lines);
+				PINTBasicApplication thisApplication = parser.Parse(thisLog, sourceFilePath, lines);
 				parser = null;
 				
 				if (thisLog.CanContinue) {
 					CodeGenerator generator = new CodeGenerator();
 					SourceLineList newLines = generator.Generate(thisApplication, thisLog);
 					generator = null;
-					
-					if (generateILfile) WriteILFile(newLines, thisLog, fileName + ".il");
+								
+					if (generateILFile) WriteILFile(newLines, thisLog, outputFilePath + fileName + ".il");
 					
 					if (thisLog.CanContinue) {
 						foreach (PINTBasicRoom sourceRoom in thisApplication.Rooms) {
@@ -54,33 +162,63 @@ namespace PINTCompiler {
 								thisRoom = Assembly.Analyzer.Analyze(thisRoom, thisLog);
 								if (thisLog.CanContinue) {
 									Assembly.PINTRoomFile thisFile = new Assembly.PINTRoomFile();
-									thisFile.Save(thisRoom.RoomID + ".RM", thisRoom, thisLog);
+									thisFile.Save(outputFilePath + thisRoom.RoomID + ".RM", thisRoom, thisLog);
 									thisFile = null;
 									
 									//special processing for roomID 0 (startup room) - generate the item file and process MIDI files
 									if (thisRoom.RoomID == 0) {
 										Assembly.PINTItemFile thisItemFile = new Assembly.PINTItemFile();
-										thisItemFile.Save("0.IT", thisRoom.Items, thisLog);
+										thisItemFile.Save(outputFilePath + "0.IT", thisRoom.Items, thisLog);
 										thisItemFile = null;
 										
 										Assembly.PINTMIDIFileWriter thisMIDIWriter = new Assembly.PINTMIDIFileWriter();
-										thisMIDIWriter.Process(thisRoom.Musics, thisLog);
+										thisMIDIWriter.Process(thisRoom.Musics, outputFilePath, thisLog);
 										thisMIDIWriter = null;
 									}
 								}
 							}
 						}
 					}			
-				}
+				}		
+		}
+		
+		public static void ListLogEntries(CompilationLog thisLog, int errorLevel) {
+			foreach (CompilationLogEntry entry in thisLog.Entries) {
+				bool showEntry = false;
+				if (entry.Level == CompilationLog.ErrorLevel.Error) showEntry = true;
+				if ((errorLevel > 0) && (entry.Level == CompilationLog.ErrorLevel.Warning)) showEntry = true;
+				if ((errorLevel > 1) && (entry.Level == CompilationLog.ErrorLevel.Information)) showEntry = true;
+				
+				if (showEntry) {					
+					string errorText = "";
+					
+					if (entry.Source != "") errorText += entry.Source + ">";
+					if (entry.LineNumber > 0) {
+						errorText += " Line: " + entry.LineNumber + " - " + entry.Message;
+					} else {
+						if (errorText != "") errorText += " ";
+						errorText += entry.Message;
+					}
 						
-				foreach (CompilationLogEntry entry in thisLog.Entries) {
-					Console.WriteLine(entry.Source + "> Line: " + entry.LineNumber + " Message: " + entry.Message);
+					Console.WriteLine(errorText);
 				}
-				
-				
-			} else {
-				Console.WriteLine("PINTCompiler " + VersionText() + " - no file name specified. ");
 			}
+		}
+		
+		public static void ShowHelp() {
+			Console.WriteLine("");
+			Console.WriteLine("Usage: PINTCompiler.exe [source_path] ([output_path] [options])");
+			Console.WriteLine("[source_path] - Source file path");
+			Console.WriteLine("[output_path] - (Optional) Output file path");
+			Console.WriteLine("");
+			Console.WriteLine("Additional options:");
+			Console.WriteLine("");
+			Console.WriteLine("/? - Show command line help information");
+			Console.WriteLine("/e - Error level:");
+			Console.WriteLine("       0 = Errors Only");
+			Console.WriteLine("       1 = Warnings/Errors [default]");
+			Console.WriteLine("       2 = Info/Warnings/Errors");
+			Console.WriteLine("/i - Generate intermediate listing(s)");
 		}
 		
 		public static void WriteILFile(SourceLineList lines, CompilationLog thisLog, string fileName) {
