@@ -3,7 +3,7 @@
 '  In this example, additional rooms are
 '  added to the game.
 '
-'  * Deja Vu?
+'  * Déjà Vu?
 '     One of the issues you can run into
 '     when coding rooms is the situation
 '     where an object has been "TAKE"en and

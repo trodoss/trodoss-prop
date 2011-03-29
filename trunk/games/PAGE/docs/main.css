@@ -1,0 +1,21 @@
+BODY {
+	FONT-WEIGHT: normal; FONT-SIZE: 11pt; COLOR: #000000; FONT-FAMILY: Verdana, Arial, sans-serif; BACKGROUND-COLOR: #FFFFFF
+}
+TD {
+	FONT-WEIGHT: normal; FONT-SIZE: 11pt; COLOR: #000000; FONT-FAMILY: Verdana, Arial, sans-serif
+}
+A {
+	COLOR: Blue; FONT-WEIGHT: normal; FONT-SIZE: 11pt; FONT-FAMILY: Verdana, Arial, sans-serif; TEXT-DECORATION: none
+}
+A:hover {
+	FONT-WEIGHT: normal; FONT-SIZE: 11pt; FONT-FAMILY: Verdana, Arial, sans-serif; TEXT-DECORATION: underline
+}
+B {
+	FONT-WEIGHT: bold
+}
+.HeaderText {
+	FONT-SIZE: 12pt; FONT-FAMILY: Verdana, Arial, sans-serif; FONT-WEIGHT:bold
+}
+.CodeSample {
+	BACKGROUND-COLOR: #AFB9D7; COLOR: Black
+}

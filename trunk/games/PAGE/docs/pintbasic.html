@@ -1,0 +1,102 @@
+<HTML>
+<HEAD><link href="main.css" type=text/css rel=stylesheet></HEAD>
+<BODY>
+<font class="HeaderText">PINTBasic Reference</font>
+<br/>
+<br/>
+<pre>
+Room:
+
+Events:
+  On_Load
+	Triggered when the Room resource is loaded in the PAGE interpreter.
+	
+  On_Use
+	Triggered when the user initiates the "USE" action on the menu.
+	
+  On_Take
+	Triggered when the user initiates the "TAKE" action on the menu.
+	
+  On_Look
+	Triggered when the user initiates the "LOOK" action on the menu.
+	
+  On_Talk
+	Triggered when the user initiates the "TALK" action on the menu.
+	
+  On_Give
+	Triggered when the user initiates the "GIVE" action on the menu.
+	
+  On_Hotspot1
+	Triggered when the Ego enters the boundaries defined for Hotspot #1
+	
+  On_Hotspot2
+	Triggered when the Ego enters the boundaries defined for Hotspot #2
+	
+  On_Hotspot3
+	Triggered when the Ego enters the boundaries defined for Hotspot #3
+	
+  On_Hotspot4
+	Triggered when the Ego enters the boundaries defined for Hotspot #4
+  
+Methods:
+  Load ([room_no])
+	[room_no] = Room number, as defined in the Room declaration of the room being loaded.
+	
+Backdrop:
+  Constructor:
+	Backdrop([backdrop_filename])
+		[backdrop_filename] = Filename of the Backdrop resource.  The Backdrop image must be an 80x80 bitmap
+	
+Pic:
+  Constructor:
+	Pic ([pic_filename])
+		[pic_filename] = Filename of the Pic resource.  The Pic image must be an 8x16 bitmap
+	
+  Methods:
+	Load ([x], [y])
+		[x] = x position (0-80) to load the Pic
+		[y] = y position (0-80) to load the Pic	
+		
+	Hide()
+  
+Ego:
+  Methods:
+	Load ([x], [y], [facing])
+		[x] = x position (0-80) to load the Ego
+		[y] = y position (0-80) to load the Ego
+		[facing] = direction facing (0-3)
+			NORTH = 0
+			SOUTH = 1
+			EAST  = 2
+			WEST  = 3
+			
+Inventory:
+  Methods:
+	Add ([item_ref])
+		[item_ref] = Item reference (instance of Item object)
+		
+	Remove ([item_ref])
+		[item_ref] = Item reference (instance of Item object)
+		
+	Contains ([item_ref])
+		[item_ref] = Item reference (instance of Item object)
+		
+Hotspot:
+	Constructor:
+		Hotspot ([x], [y], [width], [height])
+		
+	Methods:
+		ContainsEgo()
+	
+Music:
+	Constructor:
+		Music ([midi_filename])
+		- Must be MIDI 0 music.
+		
+	Methods:
+		Play([music_id])
+		
+</pre>
+
+</BODY>
+</HTML>
