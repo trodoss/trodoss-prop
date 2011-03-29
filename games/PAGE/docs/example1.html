@@ -1,0 +1,87 @@
+<HTML>
+<HEAD><link href="main.css" type=text/css rel=stylesheet></HEAD>
+<BODY>
+<font class="HeaderText">PINTBasic Example #1 - Single Room</font>
+<br/>
+<br/>
+Before diving in too deeply into how the code works, I thought I should offer a few definitions and cover a few topics:
+</br>
+</br>
+<font class="HeaderText">Room:</font>
+<br/>
+The container of both the visual elements and the interactions (events) that can occur on  a single screen.
+<br/>
+<br/>
+<font class="HeaderText">Backdrop:</font>
+<br/>
+Image (80 x 80 Bitmap) that represents the area on the screen where the player (Ego) can explore.
+<br/>
+The PAGE interpreter uses the color black to indicate a border (an area that the Ego cannot move through).
+<br/>
+<br/>
+<font class="HeaderText">Pic (Picture):</font>
+<br/>
+An image (8 x 16 Bitmap) that can represent an item (or character) in the game.
+<br/>
+PINTBasic accepts a 8 x 16 bitmap image, where the color black is the "transparent" color.
+<br/>
+<br/>
+<font class="HeaderText">Ego:</font>
+<br/>
+This represents the interactive player character that can interact with elements in the room.  The Pics that make up the ego are defined on the 'application' level (and not in the room).
+<br/>
+<br/>
+<font class="HeaderText">* Note on PINTBasic Palette:</font>
+<br/>
+When a bitmap is being converted in the format used by the PAGE interpreter, the colors mapped to the Propeller palette are based on the first 16 colors that were the default palette in applications such as "Paint" in Windows 2000/XP/Vista. If you are using another application/OS, you can match the palette to the "palette.bmp" in <a href="../examples/Example1/palette.bmp">this directory</a>.
+<br/>
+<br/>
+<font class="HeaderText">* Why Are the Graphics Distorted (Streched Horizontally) When it Runs on the PAGE Interpreter?</font>
+<br/>This has to do with the rendering of the display. The 80 x 96 image is being streched across a 192 x 96 display.  This is a 2.4:1 distortion.  Is this done to make it look more retro?  Well, not really.  It is to conserve resources, since there is only 32K to work with on the Propeller.  Looking retro is a nice side effect.  If you play some of the early Sierra Online  games, you will see a similar sort of distortion on  their early CGA/EGA games (first editions of Kings Quest I, Space Quest I, etc.).
+<br/>
+In order to get an idea of what the room will look like  when it runs under the PAGE interpreter on the Propeller, you can use the PINTRoomViewer.exe application (found in the /tools/bin sub-directory).
+<br/>
+<br/>
+<font class="HeaderText">---- Coding the Room ----</font>
+<br/>
+You can view the example code <a href="../examples/Example1/0.bas">here</a> (0.BAS).
+<br/>
+<br/>
+The first line of code in this file is an #INCLUDE pre-processor directive to include the "<a href="../examples/Example1/global.bi">globabl.bi</a>" (Basic Include) file.  If you examine this file you will see a number of global/application level definitions that are  used when compiling the room.
+<br/>
+The backdrop object "backBackdrop" is defined, as well as the "picRake" pic object.  Note that the pic object is not  immediately displayed on the screen, however the backdrop will be displayed once the room is loaded.
+<br/>
+<br/>
+<font class="HeaderText">-- On_Load Event --</font>
+<br/>
+The "On_Load" event is triggered when the room is loaded into the PINT interpreter, so any code present in this method will be triggered immediately.
+<br/>
+<pre>
+  Event On_Load
+    'Draw the rake by the shed
+    picRake.Load(14, 53)
+
+     'Load the ego (player) on the screen
+     Ego.Load(36, 60, DIR_SOUTH)
+   End Event 
+</pre>
+<br/>
+In this case, the pic object "picRake" is loaded (displayed) at the pixel location (14, 53), and the intrinsic object Ego's "Load" method is invoked to display the Ego in the room as well. The constant "DIR_SOUTH" is used to indicate direction, which is defined in the "global.bi" include file.
+<br/>
+When the room is loaded you will see the rake pic and the ego character displayed on the old shed backdrop, and the ego would be able to move around the room.
+<br/>
+<br/>
+<font class="HeaderText">-- On_Look Event --</font>
+<br/>
+The "On_Look" event is triggered when the "LOOK" action is selected from the actions menu (that appears at the bottom of the PAGE display.
+<br/>
+<br/>
+<pre>
+  Event On_Look
+    Say ("You see an old shed")
+  End Event
+</pre>
+<br/>
+The intrinsic "Say" command is used to display the message to the player.
+</BODY>
+</HTML>
