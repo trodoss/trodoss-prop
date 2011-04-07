@@ -4,9 +4,92 @@
 <font class="HeaderText">PINTBasic Reference</font>
 <br/>
 <br/>
+</br>
+</br>
+<font class="HeaderText">Room:</font>
+<br/>
+The container of both the visual elements and the interactions (events) that can occur on  a single screen.
+<br/>
+<br/>
+<font class="HeaderText">Backdrop:</font>
+<br/>
+Image (80 x 80 Bitmap) that represents the area on the screen where the player (Ego) can explore.
+<br/>
+The PAGE interpreter uses the color black to indicate a border (an area that the Ego cannot move through).
+<br/>
+<br/>
+<font class="HeaderText">Pic (Picture):</font>
+<br/>
+An image (8 x 16 Bitmap) that can represent an item (or character) in the game.
+<br/>
+PINTBasic accepts a 8 x 16 bitmap image, where the color black is the "transparent" color.
+<br/>
+<br/>
+<font class="HeaderText">Ego:</font>
+<br/>
+This represents the interactive player character that can interact with elements in the room.  The Pics that make up the ego are defined on the 'application' level (and not in the room).
+<br/>
+<br/>
+<font class="HeaderText">Hotspot:</font>
+<br/>
+A Hotspot is a non-visible screen location that can either trigger an event, or can return whether or not the Ego is within the hotspot boundaries.
+<br/>
+<br/>
+<font class="HeaderText">Inventory:</font>
+<br/>
+The inventory contains items that the ego has collected, and can be used in interacting with the other game elements (such as "GIVE"ing to  someone, or "USE"ing on/with something).
+<br/>
+<br/>
+<br/>
+<br/>
+<font class="HeaderText">* Note on the PINTBasic Palette:</font>
+<br/>
+When a bitmap is being converted in the format used by the PAGE interpreter, the colors mapped to the Propeller palette are based on the first 16 colors that were the default palette in applications such as "Paint" in Windows 2000/XP/Vista. If you are using another application/OS, you can match the palette to the "palette.bmp" in <a href="../examples/Example1/palette.bmp">this directory</a>.
+<br/>
+<br/>
+<font class="HeaderText">* Why Are the Graphics Distorted (Streched Horizontally) When it Runs on the PAGE Interpreter?</font>
+<br/>This has to do with the rendering of the display. The 80 x 96 image is being streched across a 192 x 96 display.  This is a 2.4:1 distortion.  Is this done to make it look more retro?  Well, not really.  It is to conserve resources, since there is only 32K to work with on the Propeller.  Looking retro is a nice side effect.  If you play some of the early Sierra Online  games, you will see a similar sort of distortion on  their early CGA/EGA games (first editions of Kings Quest I, Space Quest I, etc.).
+<br/>
+In order to get an idea of what the room will look like  when it runs under the PAGE interpreter on the Propeller, you can use the PINTRoomViewer.exe application (found in the /tools/bin sub-directory).
+<br/>
+<br/>
+<br/>
+<br/>
+<font class="HeaderText">Variables and Scope</font>
+<br/>
+The PINT interpreter supports 8 "global" variables, and 8 "local" (room) variables. All the variables used in the PINT interpreter are bytes.  There are some that are pre-defined, and some that can be user defined.
+<br/>
+<br/>
+- The global/application variables will retain their values between rooms.
+<br/>
+- The room variables only exist while the ego is in a particular room.
+<br/>
+- Any of the variables will persist if a LOAD/SAVE action is used in a particular room.
+<br/>
+<br/>
+The following global variables are pre-defined for use in the PINT interpreter:
+<br/>
 <pre>
-Room:
-
+     global 0 = max score
+     global 1 = current score
+     global 2 = last room 
+     global 3 = last item selected 
+</pre>
+<br/>
+These are defined as follows in the "global.bi"
+<br/>
+<pre>
+     -----------------
+      Dim g_varMaxScore As Byte
+      Dim g_varCurrentScore As Byte
+      Dim g_varLastRoom As Byte
+      Dim g_varLastItem As Byte
+<br/>
+<br/>
+<br/>
+<font class="HeaderText">Object Reference</font>
+<pre>
+Room Object:
 Events:
   On_Load
 	Triggered when the Room resource is loaded in the PAGE interpreter.
@@ -42,12 +125,16 @@ Methods:
   Load ([room_no])
 	[room_no] = Room number, as defined in the Room declaration of the room being loaded.
 	
-Backdrop:
+----
+	
+Backdrop Object:
   Constructor:
 	Backdrop([backdrop_filename])
 		[backdrop_filename] = Filename of the Backdrop resource.  The Backdrop image must be an 80x80 bitmap
-	
-Pic:
+
+----
+			
+Pic Object:
   Constructor:
 	Pic ([pic_filename])
 		[pic_filename] = Filename of the Pic resource.  The Pic image must be an 8x16 bitmap
@@ -58,8 +145,10 @@ Pic:
 		[y] = y position (0-80) to load the Pic	
 		
 	Hide()
-  
-Ego:
+	
+----
+	  
+Ego Object:
   Methods:
 	Load ([x], [y], [facing])
 		[x] = x position (0-80) to load the Ego
@@ -70,7 +159,9 @@ Ego:
 			EAST  = 2
 			WEST  = 3
 			
-Inventory:
+----
+				
+Inventory Object:
   Methods:
 	Add ([item_ref])
 		[item_ref] = Item reference (instance of Item object)
@@ -80,15 +171,25 @@ Inventory:
 		
 	Contains ([item_ref])
 		[item_ref] = Item reference (instance of Item object)
-		
-Hotspot:
+----
+			
+Item Object:
+	Constructor:
+		Item([item_name])
+			[item_name] = Item name (short 4 character name of the item)
+
+----
+				
+Hotspot Object:
 	Constructor:
 		Hotspot ([x], [y], [width], [height])
 		
 	Methods:
 		ContainsEgo()
-	
-Music:
+
+----
+			
+Music Object:
 	Constructor:
 		Music ([midi_filename])
 		- Must be MIDI 0 music.
