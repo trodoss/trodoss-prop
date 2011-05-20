@@ -17,18 +17,18 @@ Version History:
 - 0.5 -   JTCook: input fixes, graphics handling fixes
          trodoss: added load/save functionality
 - 0.6 -  trodoss: increased pic/code resource size
-                  adjusted hotspot check to lower left of player         
-
+                  adjusted hotspot check to lower left of player
+- 0.7 - roadster: added C3 support                         
+         trodoss: added fix on LoadGame to trap for file not found
 
 See the bottom of the code for terms of use.
 }}
 CON
-
 '** uncomment the section below that corresponds to your configuration **
 
 '** additional configuration is necessary in the OBJ section, selecting
 '   the input device.
-
+'{
 'Proto / Demo board
   _clkmode = xtal1 + pll16x
   _xinfreq = 5_000_000
@@ -40,9 +40,25 @@ CON
 
   Keybd     = 26    
   Tv_base   = 12
-  Sound     = 10    
+  Sound     = 10
 
+  C3 = false   
+'}
+{
+  'C3
+   _clkmode = xtal1 + pll16x
+   _xinfreq = 5_000_000
+  
+   C3 = true
+   spiDO     = 10   ''************************************
+   spiClk    = 11   ''** This configuration option must **
+   spiDI     = 9    ''** be included in your code.      ** 
+   spiCS     = 32
 
+   Keybd     = 26    
+   Tv_base   = 12
+   Sound     = 24    
+}
 {
 ' El Jugador
   _clkmode = xtal1 + pll16x
@@ -56,6 +72,8 @@ CON
   Keybd     = 23    'See object changes below for game pad
   Tv_base   = 12
   Sound     = 11
+
+  C3 = false 
 }
 {
 'Hydra
@@ -70,6 +88,8 @@ CON
   Keybd     = 15    
   Tv_base   = 24
   Sound     = 7
+
+  C3 = false 
 }
 {
 'Drake Blade
@@ -84,6 +104,8 @@ CON
   Keybd     = 26    
   Tv_base   = 16
   Sound     = 24
+
+  C3 = false 
  }
 
 
@@ -234,8 +256,13 @@ OBJ
     'key   : "migs_nes"
 
     sd   : "fsrwFemto"    
-        
+    C3CS : "C3 Channel select"
+            
 PUB Main
+   if c3 == true
+      C3CS.SPI_init
+      C3CS.selectc(5)
+     
    sd.start(@ioControl)
    sd.mount(spiDO,spiClk,spiDI,spiCS)
 
@@ -1139,21 +1166,25 @@ PUB LoadGame (fileid) | i
    GetFileName(fileid, FILE_TYPE_SAV)
    i:=sd.popen(@filenb, "r")
 
-   'read in internal variables
-   last_room := sd.pgetc
-   cur_room := sd.pgetc
-   inv_cnt := sd.pgetc
-   player_x := sd.pgetc
-   player_y := sd.pgetc
-   player_step := sd.pgetc
-   player_dir := sd.pgetc
-   player_visible := sd.pgetc
+   'if i returned a negative, the file
+   'did not exist, so do not do anything
+   if i > -1
+      
+      'read in internal variables
+      last_room := sd.pgetc
+      cur_room := sd.pgetc
+      inv_cnt := sd.pgetc
+      player_x := sd.pgetc
+      player_y := sd.pgetc
+      player_step := sd.pgetc
+      player_dir := sd.pgetc
+      player_visible := sd.pgetc
 
-   'read in the variable buffer
-   sd.pread(@varb, VAR_BUF_SIZE)
+      'read in the variable buffer
+      sd.pread(@varb, VAR_BUF_SIZE)
 
-   'read in the inventory buffer
-   sd.pread(@invb, INVENTORY_BUF_SIZE)
+      'read in the inventory buffer
+      sd.pread(@invb, INVENTORY_BUF_SIZE)
 
    sd.pclose
 
