@@ -1,5 +1,5 @@
 {{
-  This is just expiramental proof of concept code
+  Mythic Wings - trodoss
 
 }}
 CON
@@ -20,7 +20,7 @@ CON
   VERTICAL_PIXELS   = 96
 
   BACK_SIZE   = 128
-  BACK_COUNT  = 2  
+  BACK_COUNT  = 4    
 
 VAR
   byte displayb[HORIZONTAL_PIXELS * VERTICAL_PIXELS]   'allocate display buffer in RAM
@@ -28,17 +28,29 @@ VAR
   byte backb[BACK_SIZE * BACK_COUNT]                   'back buffer (when sprites are drawn)
 
   byte player_x
-  byte player_y
-      
+  byte player_y  
+
+  'pointer to the rendering cog
+  long draw_cog 
+  
+  'interface variables
+  long draw_cmd
+  long draw_scrptr
+  long draw_datptr
+
 OBJ
     tv   : "mashed_potatos_TV"
-        key   : "migs_nes"
-        'key  : "migs_keyboard"
+    key  : "migs_nes"
+   'key  : "migs_keyboard"
         
 PUB Main | toggle, delay
    tv.start(@displayb, _VCFG, _DIRA)
-   key.init(Keybd)
+   key.init(Keybd)  
+
+   InitRendering
+   
    Cls
+
    'initially draw the backdrop
    DrawBackdrop
 
@@ -50,56 +62,52 @@ PUB Main | toggle, delay
 
    'get the background where the car would be
    GetBackground(player_x, player_y, 0)
+
    DrawSprite(player_x, player_y, 0)
 
    repeat
      waitcnt(5_000_000 + cnt)
      RestoreBackground(player_x, player_y, 0)
+
      ScrollBackdrop
      CheckInput
      
      GetBackground(player_x, player_y, 0)
      DrawSprite(player_x, player_y, toggle)
+     
      delay++
      if delay > 3
         toggle++
         if toggle > 1
            toggle := 0
-        delay := 0                     
+        delay := 0      
 
-pub ScrollBackdrop
-    'capture last scanline
-    BYTEMOVE(@scanb, @displayb + 10112, HORIZONTAL_PIXELS)
-    'shift down 1 scanline
-    BYTEMOVE(@displayb + HORIZONTAL_PIXELS, @displayb, 10112)  
-    'replace scanline
-    BYTEMOVE(@displayb, @scanb, HORIZONTAL_PIXELS)
+pub InitRendering | ok
+    draw_cmd := 0
 
-pub DrawBackdrop | roadptr, road_x, road_y, i, j
-   roadptr := @tilemap
-   road_x := 0
-   road_y := 0
-   repeat j from 0 to 9
-     repeat i from 0 to 15
-       DrawTile(road_x,road_y,byte[roadptr])
-        
-       road_x += 8
-       roadptr++ 
-     road_y += 7
-     
+    ok := draw_cog := cognew(@entry, @draw_cmd) + 1       ' start the cog
+    return ok
+
+pub Cls | k
+  BYTEFILL(@displayb, $02, 12288)
+
 pub CheckInput
    if(key.Player1_Up == 1)       'Up Arrow
-      player_y -= 2
+     if (player_y > 2)
+        player_y -= 2
 
    if(key.Player1_Down == 1)     'Down Arrow
-      player_y += 2
+     if (player_y < 64)
+         player_y += 2
 
    if(key.Player1_Left == 1)     'Left Arrow
-      player_x -= 2
+     if (player_x > 2)
+         player_x -= 2
 
    if(key.Player1_Right == 1)    'Right Arrow
-      player_x += 2
-                 
+     if (player_x < 118)
+         player_x += 2  
+
 pub plot(x,y,c)
    
   displayb[y*HORIZONTAL_PIXELS+x] := c
@@ -127,35 +135,30 @@ pub Print(x,y,s,c)
     s++
     x+=4
 
-pub Cls | k
-  BYTEFILL(@displayb, $02, 12288)
+pub DrawBackdrop | roadptr, road_x, road_y, i, j
+   roadptr := @tilemap
+   road_x := 0
+   road_y := 0
+   repeat j from 0 to 9
+     repeat i from 0 to 15
+       DrawTile(road_x,road_y,byte[roadptr])
+        
+       road_x += 8
+       roadptr++ 
+     road_y += 7
 
-pub DrawTile(x,y,n) | ptr, screen_ptr
-   ptr := @tiles + (n<<6)
-   ''find location in screen memory to start tile
-   screen_ptr:= y * HORIZONTAL_PIXELS+x
-   repeat 8
-     repeat 8
-'        if byte[ptr] > $02
-             displayb[screen_ptr] := byte[ptr]
-        ptr++
-        screen_ptr++
-     screen_ptr-=8
-     screen_ptr+=HORIZONTAL_PIXELS 'next line
+pub ScrollBackdrop
+    'capture last scanline
+    BYTEMOVE(@scanb, @displayb + 10112, HORIZONTAL_PIXELS)
+    'shift down 1 scanline
+    BYTEMOVE(@displayb + HORIZONTAL_PIXELS, @displayb, 10112)  
+    'replace scanline
+    BYTEMOVE(@displayb, @scanb, HORIZONTAL_PIXELS)     
 
-pub DrawSprite(x,y,n) | ptr, screen_ptr
-   ptr := @sprites + (n<<7)
-   ''find location in screen memory to start sprite
-   screen_ptr:=y * HORIZONTAL_PIXELS+x
-   repeat 16
-      repeat 8
-        if byte[ptr] > $02
-             displayb[screen_ptr] := byte[ptr]
-        ptr++
-        screen_ptr++
-      screen_ptr-=8
-      screen_ptr+=HORIZONTAL_PIXELS 'next line
-    
+pub DrawTile(x,y,n) | i
+    repeat i from 0 to 7
+      BYTEMOVE(screen(x,y+i), @tiles[i<<3]+(n<<6), 8)
+
 pub GetBackground(x,y,b) | i
 
    repeat i from 0 to 15
@@ -168,7 +171,14 @@ pub RestoreBackground(x,y,b) | i
      BYTEMOVE(screen(x,y+i), @backb[i<<3]+(b<<7), 8)
 
 pub Screen(x,y)
-  result := @displayb +(y*HORIZONTAL_PIXELS)+x
+  result := @displayb +(y<<7)+x                          '(y * HORIZONTAL_PIXELS) + x
+
+
+pub DrawSprite(x, y, n)                  
+    repeat while (draw_cmd <> 0)                         ' wait if presently busy
+    draw_scrptr := @displayb + (y<<7)+x                  ' determine screen location
+    draw_datptr := @sprites + (n<<7)
+    draw_cmd    := 1                                     ' set the command to trigger PASM
         
 DAT
 font    byte %00000000 '(space)
@@ -377,6 +387,81 @@ tilemap byte 0, 1, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
         byte 1, 2, 6, 2, 2, 6, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0
         byte 0, 3, 3, 3, 3, 3, 3, 1, 1, 0, 1, 1, 1, 1, 1, 1
         byte 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1
+ 
+'--- start of PASM code ---
+              org      0
+        
+entry         mov      tmp1, par                        'retrieve the parameters
+              mov      cmdptr, tmp1                     'command pointer
+              add      tmp1, #4
+              mov      scrptr, tmp1                     'screen pointer
+              add      tmp1, #4
+              mov      datptr, tmp1                     'data pointer
+              
+getcmd                                                  'main loop: look for a command
+              rdlong   tmp1, cmdptr    wz
+      if_z    jmp      #getcmd
+                                                        'check the command
+checkcmd
+              cmp      tmp1, #1        wz               'if it is 1, then execute the draw command
+      if_e    jmp      #cmddraw
+
+cmddone       mov      tmp1, #0                         'reset the command pointer to 0
+              wrlong   tmp1, cmdptr
+              
+              jmp      #getcmd              
+
+'draw at a location
+cmddraw
+              rdlong   tmp2, scrptr                     'read current screen pointer into temp varialbe
+              rdlong   tmp3, datptr                     'read current data pointer into temp variable
+              mov      cnty, #0
+v_loop
+
+              mov      cntx, #0
+h_loop
+              rdbyte   tmp1, tmp3
+              cmp      tmp1, #2       wz
+     if_e     jmp      #h_loop_skip
+              
+              wrbyte   tmp1, tmp2                       'write to current screen location
+h_loop_skip
+              add      tmp2, #1                         'advance the pointer
+              add      tmp3, #1
+               
+              add      cntx, #1
+              cmp      cntx, #8       wz
+     if_e     jmp      #h_loop_end
+
+              jmp      #h_loop
+
+h_loop_end                     
+              
+              add      cnty, #1                        'increment and see if we are done with the v loop
+              cmp      cnty, #16      wz
+     if_e     jmp      #v_loop_end                     'if equal, go to v_loop_end
+
+              add      tmp2, #120                      'otherwise, add in an entire screen line less the last 8 pixels (128-8)
+
+              jmp      #v_loop                         'else, continue             
+
+v_loop_end              
+              jmp      #cmddone
+
+              
+' --------------------------------------------------------------------------------------------------
+cmdptr           res     1                               ' command pointer
+scrptr           res     1                               ' screen pointer
+datptr           res     1                               ' data pointer
+
+cntx             res     1                               ' x counter
+cnty             res     1                               ' y counter
+
+tmp1             res     1                               ' work vars
+tmp2             res     1
+tmp3             res     1
+
+                 fit     492
 {{
 
                             TERMS OF USE: MIT License
@@ -398,5 +483,4 @@ tilemap byte 0, 1, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-}}
- 
+}} 
