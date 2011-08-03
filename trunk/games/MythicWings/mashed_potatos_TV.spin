@@ -43,17 +43,19 @@ CON
 'var                    
 '  long BasePin 
    
-PUB start(tvpointer, _VCFG, _DirA)
+PUB start(tvpointer, _VCFG, _DirA, vstat)
   d_VCFG := _VCFG
-  d_DIRA := _DirA 
+  d_DIRA := _DirA
+  d_vstatus := vstat
   
   cognew(@entry,tvpointer)
-  
+    
 DAT                     org
 entry                   jmp     #initialization         'Jump past the constants
 
 DAT  d_VCFG           long  0
-DAT  d_DIRA           long  0       
+DAT  d_DIRA           long  0
+DAT  d_vstatus        long  0      
 
 CON  NTSC_color_frequency       =     3_579_545
 DAT  NTSC_color_freq            long  NTSC_color_frequency
@@ -151,7 +153,7 @@ initialization          'set up VCFG
                         mov     A, PAR                  'get bitmap address from PAR register
                         mov     bmp, PAR                'store it elsewhere as A will be written to
 
-                        
+                        mov     vstatus, d_vstatus
 
 '-----------------------------------------------------------------------------
                         'NTSC has 244 "visible" lines, but some of that is overscan etc.
@@ -175,6 +177,9 @@ frame_loop
                         'Time to do the user graphics lines.  We're having 192 of them.
                         mov     line_loop, #192         '(218 so far)
                         mov     vpixel_cnt, vpixel
+
+                        mov     r4, #2
+                        wrlong  r4, vstatus 'set the status to 2 = visible
                         'hsync                        
 user_graphics_lines     mov     VSCL, NTSC_hsync_VSCL
                         waitvid NTSC_control_signal_palette, hsync
@@ -224,7 +229,7 @@ end_of_flag_line        mov    VSCL,#CALC_frontporch
                         'keep doing the 192 active display area
                         djnz    line_loop, #user_graphics_lines
 
-
+       
                         'Reset raster display pointer for next frame
                         mov     A, bmp
 '-----------------------------------------------------------------------------
@@ -236,6 +241,9 @@ vert_front_porch        mov     VSCL, NTSC_hsync_VSCL
                         mov     VSCL, NTSC_active_video_VSCL
                         waitvid magenta_border_in_color0, #0
                         djnz    line_loop, #vert_front_porch
+
+                        mov     r4, #1
+                        wrlong  r4, vstatus   ' 1 = non-visible lines
 '-----------------------------------------------------------------------------
                         'This is the vertical sync.  It consists of 3 sections of 6 lines each.
                         mov     line_loop, #6           '(250)
@@ -289,12 +297,14 @@ r0                      long                    $0    ' should typically equal 0
 r1                      long                    $0
 r2                      long                    $0
 r3                      long                    $0
+r4                      long                    $0
 
 A                       long                    $0  'coupla more general purpose registers
 B                       long                    $0
 bmp                     long                    $0  'tvpointer ends up here
 C                       long                    $0
 vpixel_cnt              long                    $0  'counter for vertical pixel height
+vstatus                 long                    $0
 
 'This is the scan line counter
 line_loop               long    0

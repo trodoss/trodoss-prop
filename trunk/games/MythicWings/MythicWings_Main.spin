@@ -7,7 +7,7 @@ CON
   _clkmode = xtal1 + pll16x
   _xinfreq = 5_000_000
  
-  Keybd     = 16 '= 23    'See object changes below for game pad
+  Keybd     = 23 '16 '= 23    'See object changes below for game pad
   Tv_base   = 12
   Sound     = 11  
  
@@ -31,12 +31,15 @@ VAR
   byte player_y  
 
   'pointer to the rendering cog
-  long draw_cog 
+  long draw_cog
+
+  long vstatus
   
   'interface variables
   long draw_cmd
   long draw_scrptr
   long draw_datptr
+  long draw_bkgptr
 
 OBJ
     tv   : "mashed_potatos_TV"
@@ -44,7 +47,7 @@ OBJ
    'key  : "migs_keyboard"
         
 PUB Main | toggle, delay
-   tv.start(@displayb, _VCFG, _DIRA)
+   tv.start(@displayb, _VCFG, _DIRA, @vstatus)
    key.init(Keybd)  
 
    InitRendering
@@ -60,27 +63,32 @@ PUB Main | toggle, delay
    player_x := 60
    player_y := 36
 
-   'get the background where the car would be
+   'get the background where the player would be
    GetBackground(player_x, player_y, 0)
+
 
    DrawSprite(player_x, player_y, 0)
 
-   repeat
-     waitcnt(5_000_000 + cnt)
-     RestoreBackground(player_x, player_y, 0)
 
-     ScrollBackdrop
-     CheckInput
-     
-     GetBackground(player_x, player_y, 0)
-     DrawSprite(player_x, player_y, toggle)
-     
+   repeat
      delay++
      if delay > 3
         toggle++
         if toggle > 1
            toggle := 0
         delay := 0      
+
+     repeat until vstatus == 1
+     
+     RestoreBackground(player_x, player_y, 0)
+
+     ScrollBackdrop
+     CheckInput
+     
+     GetBackground(player_x, player_y, 0)
+     
+     DrawSprite(player_x, player_y, toggle)
+   
 
 pub InitRendering | ok
     draw_cmd := 0
@@ -110,7 +118,7 @@ pub CheckInput
 
 pub plot(x,y,c)
    
-  displayb[y*HORIZONTAL_PIXELS+x] := c
+  displayb[y<<7+x] := c          '(y * HORIZONTAL_PIXELS) + x 
 
 pub DrawChar(x,y,ch,c) | ptr, fx, fy, b
    ptr := @font + (ch * 2)
@@ -145,41 +153,40 @@ pub DrawBackdrop | roadptr, road_x, road_y, i, j
         
        road_x += 8
        roadptr++ 
-     road_y += 7
-
-pub ScrollBackdrop
-    'capture last scanline
-    BYTEMOVE(@scanb, @displayb + 10112, HORIZONTAL_PIXELS)
-    'shift down 1 scanline
-    BYTEMOVE(@displayb + HORIZONTAL_PIXELS, @displayb, 10112)  
-    'replace scanline
-    BYTEMOVE(@displayb, @scanb, HORIZONTAL_PIXELS)     
+     road_y += 7     
 
 pub DrawTile(x,y,n) | i
     repeat i from 0 to 7
-      BYTEMOVE(screen(x,y+i), @tiles[i<<3]+(n<<6), 8)
-
-pub GetBackground(x,y,b) | i
-
-   repeat i from 0 to 15
-     BYTEMOVE(@backb[i<<3]+(b<<7), screen(x,y+i), 8)
-
-
-pub RestoreBackground(x,y,b) | i
-
-   repeat i from 0 to 15
-     BYTEMOVE(screen(x,y+i), @backb[i<<3]+(b<<7), 8)
+     BYTEMOVE(screen(x,y+i), @tiles[i<<3]+(n<<6), 8)
 
 pub Screen(x,y)
   result := @displayb +(y<<7)+x                          '(y * HORIZONTAL_PIXELS) + x
 
-
 pub DrawSprite(x, y, n)                  
-    repeat while (draw_cmd <> 0)                         ' wait if presently busy
-    draw_scrptr := @displayb + (y<<7)+x                  ' determine screen location
+    repeat while draw_cmd <> 0                          ' wait if presently busy
+    draw_scrptr := @displayb + (y<<7)+x                 ' determine screen location
     draw_datptr := @sprites + (n<<7)
-    draw_cmd    := 1                                     ' set the command to trigger PASM
-        
+    draw_cmd    := 1                                    ' set the command to trigger PASM
+
+pub GetBackground(x,y,b)
+    repeat while draw_cmd <> 0
+    draw_scrptr := @displayb +(y<<7)+x
+    draw_bkgptr := @backb+(b<<7)
+    draw_cmd    := 2
+
+pub RestoreBackground(x,y,b)
+    repeat while draw_cmd <> 0
+    draw_scrptr := @displayb +(y<<7)+x
+    draw_bkgptr := @backb+(b<<7)
+    draw_cmd    := 3
+
+pub ScrollBackdrop    
+    repeat while draw_cmd <> 0
+    draw_scrptr := @displayb
+    draw_datptr := @scanb
+    draw_bkgptr := @displayb
+    draw_cmd    := 4    
+
 DAT
 font    byte %00000000 '(space)
         byte %00000000
@@ -388,7 +395,7 @@ tilemap byte 0, 1, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
         byte 0, 3, 3, 3, 3, 3, 3, 1, 1, 0, 1, 1, 1, 1, 1, 1
         byte 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1
  
-'--- start of PASM code ---
+'--- start of PASM code -----------------------------------------------------------
               org      0
         
 entry         mov      tmp1, par                        'retrieve the parameters
@@ -397,7 +404,9 @@ entry         mov      tmp1, par                        'retrieve the parameters
               mov      scrptr, tmp1                     'screen pointer
               add      tmp1, #4
               mov      datptr, tmp1                     'data pointer
-              
+              add      tmp1, #4
+              mov      bkgptr, tmp1                     'background pointer
+                           
 getcmd                                                  'main loop: look for a command
               rdlong   tmp1, cmdptr    wz
       if_z    jmp      #getcmd
@@ -405,19 +414,24 @@ getcmd                                                  'main loop: look for a c
 checkcmd
               cmp      tmp1, #1        wz               'if it is 1, then execute the draw command
       if_e    jmp      #cmddraw
+              cmp      tmp1, #2        wz               'if it is 2, then execute the get command
+      if_e    jmp      #cmdget
+              cmp      tmp1, #3        wz               'if it is 3, then execute the put command
+      if_e    jmp      #cmdput
+              cmp      tmp1, #4        wz               'if it is 4, then execute the scroll command
+      if_e    jmp      #cmdscroll
 
 cmddone       mov      tmp1, #0                         'reset the command pointer to 0
               wrlong   tmp1, cmdptr
               
               jmp      #getcmd              
 
-'draw at a location
+'draw at a location ----------------------------------------------------------------
 cmddraw
               rdlong   tmp2, scrptr                     'read current screen pointer into temp varialbe
               rdlong   tmp3, datptr                     'read current data pointer into temp variable
               mov      cnty, #0
 v_loop
-
               mov      cntx, #0
 h_loop
               rdbyte   tmp1, tmp3
@@ -434,25 +448,133 @@ h_loop_skip
      if_e     jmp      #h_loop_end
 
               jmp      #h_loop
-
-h_loop_end                     
-              
+h_loop_end              
               add      cnty, #1                        'increment and see if we are done with the v loop
               cmp      cnty, #16      wz
      if_e     jmp      #v_loop_end                     'if equal, go to v_loop_end
 
               add      tmp2, #120                      'otherwise, add in an entire screen line less the last 8 pixels (128-8)
 
-              jmp      #v_loop                         'else, continue             
-
+              jmp      #v_loop                         'else, continue
 v_loop_end              
               jmp      #cmddone
 
+'get pixels at a location -----------------------------------------------------------
+cmdget
+              rdlong   tmp2, scrptr                    'read the current screen pointer to a temp variable
+              rdlong   tmp3, bkgptr                    'read the current background pointer to a temp variable
+              mov      cnty, #0
+get_v_loop
+              mov      cntx, #0              
+get_h_loop
+              rdbyte   tmp1, tmp2
+              wrbyte   tmp1, tmp3
+              add      tmp3, #1
+              add      tmp2, #1
+
+              add      cntx, #1
+              cmp      cntx, #8       wz
+    if_e      jmp      #get_h_loop_end
+
+              jmp      #get_h_loop
+get_h_loop_end
+
+              add      cnty, #1
+              cmp      cnty, #16      wz
+    if_e      jmp      #get_v_loop_end
+
+              add      tmp2, #120                      'add in an entire screen line less the last 8 pixels (128-8)
+
+              jmp      #get_v_loop    
+
+get_v_loop_end                
+              jmp      #cmddone
+
+'put pixels at a location -----------------------------------------------------------
+cmdput
+              rdlong   tmp2, scrptr                    'read the current screen pointer to a temp variable
+              rdlong   tmp3, bkgptr                    'read the current background pointer to a temp variable
+              mov      cnty, #0
+put_v_loop
+              mov      cntx, #0
+put_h_loop              
+              rdbyte   tmp1, tmp3
+              wrbyte   tmp1, tmp2
+              add      tmp3, #1
+              add      tmp2, #1
+
+              add      cntx, #1
+              cmp      cntx, #8       wz
+    if_e      jmp      #put_h_loop_end
+
+              jmp      #put_h_loop            
+put_h_loop_end
+
+              add      cnty, #1
+              cmp      cnty, #16      wz
+    if_e      jmp      #put_v_loop_end
+
+              add      tmp2, #120                      'add in an entire screen line less the last 8 pixels (128-8)    
+
+              jmp      #put_v_loop
+put_v_loop_end           
+              jmp      #cmddone
+
+'scroll the entire screen -----------------------------------------------------------
+cmdscroll
+
+              rdlong   tmp2, scrptr                    'read the screen pointer to a temp variable
+              rdlong   tmp3, datptr                    'read the current data/scanline buffer
               
+              mov      cntx, #128                     'set the loop count to 128
+              add      tmp2, bufbyte  
+              
+scr_last_loop
+              rdbyte   tmp1, tmp2
+              add      tmp2, #1 
+              wrbyte   tmp1, tmp3
+              add      tmp3, #1
+              djnz     cntx, #scr_last_loop
+             
+'start of middle loop
+              rdlong   tmp2, bkgptr
+              rdlong   tmp3, scrptr
+              
+              add      tmp2, bufbyte
+              sub      tmp2, #4
+              add      tmp3, bufbyte2
+              
+              mov      cntx, buflong
+scr_mid_loop
+              rdlong   tmp1, tmp2
+              sub      tmp2, #4       
+              wrlong   tmp1, tmp3
+              sub      tmp3, #4
+                             
+              djnz     cntx, #scr_mid_loop
+
+'start of top loop
+              rdlong   tmp2, scrptr                    'read the current screen pointer to a temp variable
+              rdlong   tmp3, datptr                    'read the current data/scanline buffer
+              mov      cntx, #128                      'start at the end, and work backwords
+                            
+scr_top_loop
+              rdbyte   tmp1, tmp3
+              add      tmp3, #1
+              wrbyte   tmp1, tmp2
+              add      tmp2, #1
+              djnz     cntx, #scr_top_loop             'decrement, jump if not equal
+         
+              jmp      #cmddone                        
 ' --------------------------------------------------------------------------------------------------
+bufbyte          long    $2780                           '10112
+bufbyte2         long    $27FC                           '10240 - 4 (to align correctly)
+buflong          long    $9E0                            '2528 
+
 cmdptr           res     1                               ' command pointer
 scrptr           res     1                               ' screen pointer
 datptr           res     1                               ' data pointer
+bkgptr           res     1                               ' background pointer
 
 cntx             res     1                               ' x counter
 cnty             res     1                               ' y counter

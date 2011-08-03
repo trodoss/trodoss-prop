@@ -47,14 +47,14 @@ namespace BitmapConvert {
 			Bitmap bitmap = new Bitmap(bitmapFileName);
 			
 			//determine the number of rows and columns to process in the image file
-			int totalCols = bitmap.Height / yHeight;
-			int totalRows = bitmap.Width / xWidth;
+			int totalRows = bitmap.Height / yHeight;
+			int totalCols = bitmap.Width / xWidth;
 
 			using (BinaryWriter binaryWriter = new BinaryWriter(File.Open(outputFileName, FileMode.Create))) {	
 				for (int currentRow = 0; currentRow < totalRows; currentRow++) {
 					for (int currentCol = 0; currentCol < totalCols; currentCol++) {
-						int currentX = currentCol * xWidth;
 						int currentY = currentRow * yHeight;
+						int currentX = currentCol * xWidth;
 						Write(bitmap, binaryWriter, xWidth, yHeight, currentX, currentY);
 					}
 				}
@@ -102,7 +102,7 @@ namespace BitmapConvert {
 											elementWidthString = thisArgument;
 										} else {
 											if (elementHeightString == "") {
-												elementWidthString = thisArgument;
+												elementHeightString = thisArgument;
 											} else {
 												//more than that, and it is an error
 												canContinue = false;
