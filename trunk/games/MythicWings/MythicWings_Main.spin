@@ -19,13 +19,23 @@ CON
   HORIZONTAL_PIXELS = 128
   VERTICAL_PIXELS   = 96
 
-  BACK_SIZE   = 128
-  BACK_COUNT  = 4    
+  BACK_SIZE   = 128 
+  SPRITE_COUNT   = 4                       'number of sprites
+  SPRITE_COUNT_0 = SPRITE_COUNT - 1        'number of sprites, 0 based
+
+
+  SPRITE_SIZE     = 4       'sprite size
+  SPRITE_VISIBLE  = 0       'sprite visible (1 = visible, 0 = invisible)
+  SPRITE_X        = 1       'sprite x value
+  SPRITE_Y        = 2       'sprite y value
+  SPRITE_IMG      = 3       'sprite image 
+
 
 VAR
   byte displayb[HORIZONTAL_PIXELS * VERTICAL_PIXELS]   'allocate display buffer in RAM
   byte scanb[HORIZONTAL_PIXELS]
-  byte backb[BACK_SIZE * BACK_COUNT]                   'back buffer (when sprites are drawn)
+  byte backb[BACK_SIZE * SPRITE_COUNT]                 'back buffer (when sprites are drawn)
+  byte spriteb[SPRITE_SIZE * SPRITE_COUNT]
 
   byte player_x
   byte player_y  
@@ -62,13 +72,13 @@ PUB Main | toggle, delay
    Print(4, 85, string("SCORE: 0000  LIVES: 00"), $07)
    player_x := 60
    player_y := 36
+   AddSprite(0)
+   SetSprite(0, player_x, player_y, 0)
 
-   'get the background where the player would be
-   GetBackground(player_x, player_y, 0)
+   AddSprite(1)
+   SetSprite(1, 2, 2, 0)
 
-
-   DrawSprite(player_x, player_y, 0)
-
+   RenderSprites
 
    repeat
      delay++
@@ -79,16 +89,13 @@ PUB Main | toggle, delay
         delay := 0      
 
      repeat until vstatus == 1
+    
+     RenderBackdrop
      
-     RestoreBackground(player_x, player_y, 0)
-
-     ScrollBackdrop
      CheckInput
-     
-     GetBackground(player_x, player_y, 0)
-     
-     DrawSprite(player_x, player_y, toggle)
-   
+     SetSprite(0, player_x, player_y, toggle)
+          
+     RenderSprites   
 
 pub InitRendering | ok
     draw_cmd := 0
@@ -162,6 +169,34 @@ pub DrawTile(x,y,n) | i
 pub Screen(x,y)
   result := @displayb +(y<<7)+x                          '(y * HORIZONTAL_PIXELS) + x
 
+pub AddSprite(sprite_no) | ptr
+   ptr := @spriteb + (sprite_no * SPRITE_SIZE)
+   byte[ptr][SPRITE_VISIBLE] := 1
+    
+pub SetSprite(sprite_no, spr_x, spr_y, spr_img) | ptr
+   ptr := @spriteb + (sprite_no * SPRITE_SIZE)
+   byte[ptr][SPRITE_X] := spr_x
+   byte[ptr][SPRITE_Y] := spr_y
+   byte[ptr][SPRITE_IMG] := spr_img
+
+pub RenderBackdrop |i, ptr
+   ptr := @spriteb
+   repeat i from 0 to SPRITE_COUNT_0
+     if byte[ptr][SPRITE_VISIBLE] == 1
+         RestoreBackground(byte[ptr][SPRITE_X], byte[ptr][SPRITE_Y], i)
+     ptr += SPRITE_SIZE    
+   ScrollBackdrop
+                
+pub RenderSprites | i, ptr
+   ptr := @spriteb + 12 'start at the end
+   repeat i from SPRITE_COUNT_0 to 0 
+      if byte[ptr][SPRITE_VISIBLE] == 1
+         'get the background where the player would be
+         GetBackground(byte[ptr][SPRITE_X], byte[ptr][SPRITE_Y], i)      
+         'draw the sprite
+         DrawSprite(byte[ptr][SPRITE_X], byte[ptr][SPRITE_Y], byte[ptr][SPRITE_IMG])
+      ptr -= SPRITE_SIZE
+      
 pub DrawSprite(x, y, n)                  
     repeat while draw_cmd <> 0                          ' wait if presently busy
     draw_scrptr := @displayb + (y<<7)+x                 ' determine screen location
@@ -426,98 +461,70 @@ cmddone       mov      tmp1, #0                         'reset the command point
               
               jmp      #getcmd              
 
+'draw the backdrop -----------------------------------------------------------------
+'cmdback
+'
+'              jmp      #cmddone
+
 'draw at a location ----------------------------------------------------------------
 cmddraw
               rdlong   tmp2, scrptr                     'read current screen pointer into temp varialbe
               rdlong   tmp3, datptr                     'read current data pointer into temp variable
-              mov      cnty, #0
+              mov      cnty, #16
 v_loop
-              mov      cntx, #0
+              mov      cntx, #8
 h_loop
               rdbyte   tmp1, tmp3
-              cmp      tmp1, #2       wz
-     if_e     jmp      #h_loop_skip
+              cmp      tmp1, #2       wz                'test for the transparent color ($02)
+     if_e     jmp      #h_loop_skip                     'if it is, skip writing
               
               wrbyte   tmp1, tmp2                       'write to current screen location
 h_loop_skip
               add      tmp2, #1                         'advance the pointer
-              add      tmp3, #1
-               
-              add      cntx, #1
-              cmp      cntx, #8       wz
-     if_e     jmp      #h_loop_end
-
-              jmp      #h_loop
-h_loop_end              
-              add      cnty, #1                        'increment and see if we are done with the v loop
-              cmp      cnty, #16      wz
-     if_e     jmp      #v_loop_end                     'if equal, go to v_loop_end
+              add      tmp3, #1               
+              djnz     cntx, #h_loop
 
               add      tmp2, #120                      'otherwise, add in an entire screen line less the last 8 pixels (128-8)
+              djnz     cnty, #v_loop
 
-              jmp      #v_loop                         'else, continue
-v_loop_end              
               jmp      #cmddone
 
 'get pixels at a location -----------------------------------------------------------
 cmdget
               rdlong   tmp2, scrptr                    'read the current screen pointer to a temp variable
               rdlong   tmp3, bkgptr                    'read the current background pointer to a temp variable
-              mov      cnty, #0
+              mov      cnty, #16
 get_v_loop
-              mov      cntx, #0              
-get_h_loop
+              mov      cntx, #8
+get_h_loop              
               rdbyte   tmp1, tmp2
+              add      tmp2, #1
               wrbyte   tmp1, tmp3
               add      tmp3, #1
-              add      tmp2, #1
-
-              add      cntx, #1
-              cmp      cntx, #8       wz
-    if_e      jmp      #get_h_loop_end
-
-              jmp      #get_h_loop
-get_h_loop_end
-
-              add      cnty, #1
-              cmp      cnty, #16      wz
-    if_e      jmp      #get_v_loop_end
+              djnz     cntx, #get_h_loop
 
               add      tmp2, #120                      'add in an entire screen line less the last 8 pixels (128-8)
-
-              jmp      #get_v_loop    
-
-get_v_loop_end                
+              djnz     cnty, #get_v_loop
+         
               jmp      #cmddone
 
 'put pixels at a location -----------------------------------------------------------
 cmdput
               rdlong   tmp2, scrptr                    'read the current screen pointer to a temp variable
               rdlong   tmp3, bkgptr                    'read the current background pointer to a temp variable
-              mov      cnty, #0
+              mov      cnty, #16
 put_v_loop
-              mov      cntx, #0
+              mov      cntx, #8
 put_h_loop              
               rdbyte   tmp1, tmp3
-              wrbyte   tmp1, tmp2
               add      tmp3, #1
+              wrbyte   tmp1, tmp2
               add      tmp2, #1
+              djnz     cntx, #put_h_loop
 
-              add      cntx, #1
-              cmp      cntx, #8       wz
-    if_e      jmp      #put_h_loop_end
-
-              jmp      #put_h_loop            
-put_h_loop_end
-
-              add      cnty, #1
-              cmp      cnty, #16      wz
-    if_e      jmp      #put_v_loop_end
-
-              add      tmp2, #120                      'add in an entire screen line less the last 8 pixels (128-8)    
-
-              jmp      #put_v_loop
-put_v_loop_end           
+              add      tmp2, #120                      'add in an entire screen line less the last 8 pixels (128-8)
+              djnz     cnty, #put_v_loop
+         
               jmp      #cmddone
 
 'scroll the entire screen -----------------------------------------------------------
@@ -526,7 +533,7 @@ cmdscroll
               rdlong   tmp2, scrptr                    'read the screen pointer to a temp variable
               rdlong   tmp3, datptr                    'read the current data/scanline buffer
               
-              mov      cntx, #128                     'set the loop count to 128
+              mov      cntx, #127                     'set the loop count to 128
               add      tmp2, bufbyte  
               
 scr_last_loop
@@ -556,7 +563,7 @@ scr_mid_loop
 'start of top loop
               rdlong   tmp2, scrptr                    'read the current screen pointer to a temp variable
               rdlong   tmp3, datptr                    'read the current data/scanline buffer
-              mov      cntx, #128                      'start at the end, and work backwords
+              mov      cntx, #127                      'start at the end, and work backwords
                             
 scr_top_loop
               rdbyte   tmp1, tmp3
