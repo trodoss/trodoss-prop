@@ -74,10 +74,7 @@ PUB Main | toggle, delay
    player_y := 36
    AddSprite(0)
    SetSprite(0, player_x, player_y, 0)
-
-   AddSprite(1)
-   SetSprite(1, 2, 2, 0)
-
+   
    RenderSprites
 
    repeat
@@ -86,13 +83,15 @@ PUB Main | toggle, delay
         toggle++
         if toggle > 1
            toggle := 0
-        delay := 0      
+        delay := 0
+           
+     CheckInput
 
+     'wait for the vsync event to render the graphics
      repeat until vstatus == 1
     
      RenderBackdrop
-     
-     CheckInput
+
      SetSprite(0, player_x, player_y, toggle)
           
      RenderSprites   
@@ -121,7 +120,7 @@ pub CheckInput
 
    if(key.Player1_Right == 1)    'Right Arrow
      if (player_x < 118)
-         player_x += 2  
+         player_x += 2 
 
 pub plot(x,y,c)
    
@@ -170,11 +169,11 @@ pub Screen(x,y)
   result := @displayb +(y<<7)+x                          '(y * HORIZONTAL_PIXELS) + x
 
 pub AddSprite(sprite_no) | ptr
-   ptr := @spriteb + (sprite_no * SPRITE_SIZE)
+   ptr := @spriteb + (sprite_no << 2)
    byte[ptr][SPRITE_VISIBLE] := 1
     
 pub SetSprite(sprite_no, spr_x, spr_y, spr_img) | ptr
-   ptr := @spriteb + (sprite_no * SPRITE_SIZE)
+   ptr := @spriteb + (sprite_no << 2)
    byte[ptr][SPRITE_X] := spr_x
    byte[ptr][SPRITE_Y] := spr_y
    byte[ptr][SPRITE_IMG] := spr_img
@@ -460,11 +459,6 @@ cmddone       mov      tmp1, #0                         'reset the command point
               wrlong   tmp1, cmdptr
               
               jmp      #getcmd              
-
-'draw the backdrop -----------------------------------------------------------------
-'cmdback
-'
-'              jmp      #cmddone
 
 'draw at a location ----------------------------------------------------------------
 cmddraw
