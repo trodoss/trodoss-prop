@@ -1,0 +1,34 @@
+<RTX file> := <name> ":" [<control section>] ":" <tone-commands>
+
+<name> := <char>+ ; maximum name length 10 characters
+
+<control-section> := <control-pair> ["," <control-section>]
+
+<control-pair> := <control-name> ["="] <control-value>
+
+<control-name> := "o" | "d" | "b" | "s" | "l"
+; Valid in control section: o=default scale, d=default duration, b=default beats per minute, s=style, l=looping (0=none, 1-14=repeat, 15=infinite)
+; Valid in tone section: o, b, s
+
+<control-value> := <char>+ ; dependent on control-name
+
+; if not specified, defaults are 4=duration, 6=scale, 63=beats-per-minute
+; styles are S=Staccato, N=Natural, C=Continuous
+; any unknown control-names must be ignored
+
+<tone-commands> := <tone-command> ["," <tone-commands>]
+
+<tone-command> :=<note> | <control-pair>
+
+<note> := [<duration>] <note> [<scale>] [<special-duration>] <delimiter>
+
+<duration> := "1" | "2" | "4" | "8" | "16" | "32" ; duration is divider of full note duration, e.g. 4 represents a quarter note
+
+<note> := "P" | "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "H" 
+
+<scale> :="4" | "5" | "6" | "7"
+
+; Note that octave 4: A=440Hz, 5: A=880Hz, 6: A=1.76 kHz, 7: A=3.52 kHz
+; The lowest note on the Nokia 61xx is A4, the highest is B7
+
+<special-duration> := "." ; Dotted not
