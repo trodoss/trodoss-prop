@@ -2,10 +2,11 @@ using System;
 using System.Collections;
 using System.IO;
 //****************************************
-//trodoss - 2010
+//trodoss - 2012
 //See end of file for terms of use.  
 //***************************************
 //Version 1.0 - Initial Release
+//Version 1.1 - Revised to include more RTTTL features (RTX support)
 //************** N A M E S P A C E ****************************************
 namespace PropellerPowered.Sound {
 	//*********************************************************************
@@ -26,7 +27,8 @@ namespace PropellerPowered.Sound {
 				reader = null;
 				
 				string [] musicDataElements = musicFileData.Split(':');
-				//skip first element (title), since we cannot use it
+				//first element (title)
+				thisSong.Title = musicDataElements[0];
 									
 				//second section includes defaults
 				if (musicDataElements.Length > 1) {
@@ -68,6 +70,7 @@ namespace PropellerPowered.Sound {
 						string octaveString = "";
 						string lengthString = "";
 						string noteString = "";
+						bool dottedNote = false;
 											
 						foreach (char musicNoteSubCharacter in musicNoteSubElement) {
 												
@@ -76,7 +79,8 @@ namespace PropellerPowered.Sound {
 								throw new SoundException("Unrecognized character in sub element");
 							} else {
 								if (musicNoteSubCharacter == 35) noteString += "#";
-													
+								if (musicNoteSubCharacter == 46) dottedNote = true;
+								
 								//numeric digit
 								if ((musicNoteSubCharacter > 47) && (musicNoteSubCharacter < 58)) {
 														
@@ -102,108 +106,115 @@ namespace PropellerPowered.Sound {
 											
 					int octaveValue = defaultOctave;
 					int lengthNumber = defaultNoteLength;
-					int lengthValue = 0;
-					int noteValue = 0;
-					int eofFlagValue = 0;
+					DurationType lengthValue = DurationType.None;
+					PitchType noteValue = PitchType.Pause;
+					FlagType noteFlag  = FlagType.None;
 											
 					//if values were specified for this note, use them
 					if (octaveString != "") octaveValue = Convert.ToInt32(octaveString);
 					if (lengthString != "") lengthNumber = Convert.ToInt32(lengthString);
 	
+					//if this is a dotted note, then indicate this with a flag
+					if (dottedNote) noteFlag = FlagType.Dotted;//lengthNumber += lengthNumber / 2;
+					
 					//translate the note values to an integer
 					switch (noteString) {
 						case "p":
-							noteValue = 0;
+							noteValue = PitchType.Pause;
 							break;
 													
 						case "a":
-							noteValue = 1;
+							noteValue = PitchType.A;
 							break;
 													
 						case "a#":
-							noteValue = 2;
+							noteValue = PitchType.ASharp;
 							break;
 													
 						case "b":
-							noteValue = 3;
+							noteValue = PitchType.B;
 							break;
 													
 						case "c":
-							noteValue = 4;
+							noteValue = PitchType.C;
 							break;
 												
 						case "c#":
-							noteValue = 5;
+							noteValue = PitchType.CSharp;
 							break;
 												
 						case "d":
-							noteValue = 6;
+							noteValue = PitchType.D;
 							break;
 													
 						case "d#":
-							noteValue = 7;
+							noteValue = PitchType.DSharp;
 							break;
 												
 						case "e":
-							noteValue = 8;
+							noteValue = PitchType.E;
 							break;
 													
 						case "f":
-							noteValue = 9;
+							noteValue = PitchType.F;
 							break;
 													
 						case "f#":
-							noteValue = 10;
+							noteValue = PitchType.FSharp;
 							break;
 													
 						case "g":
-							noteValue = 11;
+							noteValue = PitchType.G;
 							break;
 													
 						case "g#":
-							noteValue = 12;
+							noteValue = PitchType.GSharp;
 							break;									
 					}
 											
 					//translate the length value into integer
 					switch (lengthNumber) {
+						case (int)128:
+							lengthValue = DurationType.OneHundredTwentyEighth;
+							break;
+							
 						case (int)64:
-							lengthValue = 0;
+							lengthValue = DurationType.SixtyFourth;
 							break;
 											
 						case (int)32:
-							lengthValue = 1;
+							lengthValue = DurationType.ThirtySecond;
 							break;
 												
 						case (int)16:
-							lengthValue = 2;
+							lengthValue = DurationType.Sixteenth;
 							break;
 													
 						case (int)8:
-							lengthValue = 3;
+							lengthValue = DurationType.Eighth;
 							break;
 													
 						case (int)4:
-							lengthValue = 4;
+							lengthValue = DurationType.Quarter;
 							break;
 
 						case (int)2:
-							lengthValue = 5;
+							lengthValue = DurationType.Half;
 							break;
 													
 						case (int)1:
-							lengthValue = 6;
+							lengthValue = DurationType.Whole;
 							break;
 					}
-											
+						
 					//if this is the last note, mark the EOF byte
-					if (j == (musicNotesSubElements.Length-1)) eofFlagValue = 1;
-											
+                    if (j == (musicNotesSubElements.Length-1)) noteFlag = FlagType.EndOfSong;
+														
 					Note thisNote = new Note();
-					thisNote.NoteValue = noteValue;
+					thisNote.Pitch = noteValue;
 					thisNote.Octave = octaveValue;
 					thisNote.Duration = lengthValue;
-					thisNote.EOFFlag = eofFlagValue;
+					thisNote.Flag = noteFlag;
 					thisSong.Notes.Add(thisNote);
 					thisNote = null;
 					}

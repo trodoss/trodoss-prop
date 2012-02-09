@@ -4,7 +4,7 @@ using System.Collections;
 using PropellerPowered.General;
 using PropellerPowered.Sound;
 //****************************************
-//trodoss - 2010 
+//trodoss - 2012
 //See end of file for terms of use.  
 //***************************************
 
@@ -15,7 +15,7 @@ namespace PropellerPowered.Sound {
 	//*********************************************************************		
 	public enum InputType {RTTTL}
 	/// <summary>
-	/// Establish the standard output types ( RTTTL)
+	/// Establish the standard output types ( RTTTL/RTX)
 	/// </summary>
 	
 	public enum OutputType {SimpleSound}

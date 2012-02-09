@@ -3,18 +3,23 @@ using System.Collections;
 using System.IO;
 
 //****************************************
-//trodoss - 2010
+//trodoss - 2012
 //See end of file for terms of use.  
 //***************************************
 //Version 1.0 - Initial Release
-
+//Version 1.1 - Revised to include more RTTTL features, and switch from LONG (4 byte) to WORD (2 byte) data
+//              to decrease overall file size
 //************** N A M E S P A C E ****************************************
 namespace PropellerPowered.Sound {
 	//*********************************************************************
 	// SimpleSoundWriter Class
 	//*********************************************************************	
 	public class SimpleSoundWriter {					
-		
+		private static int EncodeInByte(int number1, int number2) {
+			int returnNumber = number1 << 4;
+			returnNumber += number2;
+			return returnNumber;
+		}		
 		//*********** P U B L I C   F U N C T I O N S  ( M E T H O D S ) ******
 		public static void Write (PropellerPowered.Sound.Song thisSong, string outputFileName) {						
 			Write( thisSong, outputFileName, FileMode.Create);
@@ -29,10 +34,8 @@ namespace PropellerPowered.Sound {
 					binaryWriter.Write((int) thisSong.BeatsPerMinute);
 					
 					foreach (Note thisNote in thisSong.Notes) {
-						binaryWriter.Write((byte) thisNote.NoteValue);
-						binaryWriter.Write((byte) thisNote.Octave);
-						binaryWriter.Write((byte) thisNote.Duration);
-						binaryWriter.Write((byte) thisNote.EOFFlag);
+						binaryWriter.Write((byte) EncodeInByte((int)thisNote.Pitch, (int)thisNote.Octave));
+						binaryWriter.Write((byte) EncodeInByte((int)thisNote.Duration, (int)thisNote.Flag));
 					}								
 				}			
 			} catch (Exception e){
@@ -42,8 +45,8 @@ namespace PropellerPowered.Sound {
 			//add in long (4 bytes) for tempo at the beginning of the song
 			songLength +=4;
 			
-			//account for the 4 bytes for each of the note elements
-			songLength += (thisSong.Notes.Count * 4);
+			//account for the 2 bytes for each of the note elements
+			songLength += (thisSong.Notes.Count * 2);
 			
 			return songLength;
 		}

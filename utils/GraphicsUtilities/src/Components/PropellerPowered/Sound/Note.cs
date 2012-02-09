@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 //****************************************
-//trodoss - 2010
+//trodoss - 2012
 //See end of file for terms of use.  
 //***************************************
 //Version 1.0 - Initial Release
@@ -10,11 +10,15 @@ namespace PropellerPowered.Sound {
 	//*********************************************************************
 	// Note Class
 	//*********************************************************************
+	public enum PitchType:int {Pause=0, A=1, ASharp=2, B=3, C=4, CSharp=5, D=6, DSharp=7, E=8, F=9, FSharp=10, G=11, GSharp=12}
+	public enum DurationType:int {None=-1, Whole=7, Half=6, Quarter=5, Eighth=4, Sixteenth=3, ThirtySecond=2, SixtyFourth=1, OneHundredTwentyEighth=0}
+	public enum FlagType:int {None=0, Dotted=1, EndOfSong = 9}
+	
 	public class Note {
 		public int Octave;
-		public int NoteValue;
-		public int Duration;
-		public int EOFFlag;
+		public PitchType Pitch;
+		public DurationType Duration;
+		public FlagType Flag;
 	}
 }
 /*

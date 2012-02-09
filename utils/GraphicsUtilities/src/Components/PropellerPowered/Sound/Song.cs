@@ -13,6 +13,7 @@ namespace PropellerPowered.Sound {
 	public class Song {
 		public ArrayList Notes;
 		public int BeatsPerMinute;
+		public string Title;
 		
 		/// <sumary>
 		/// Constructor
